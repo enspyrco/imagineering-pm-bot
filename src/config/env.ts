@@ -45,29 +45,45 @@ const envSchema = z.object({
 
 export type Env = z.infer<typeof envSchema>;
 
+/** Error thrown when environment validation fails. */
+export class EnvValidationError extends Error {
+  constructor(public readonly issues: z.ZodIssue[]) {
+    const formatted = issues
+      .map((issue) => `  ${issue.path.join(".")}: ${issue.message}`)
+      .join("\n");
+    super("Environment validation failed:\n" + formatted);
+    this.name = "EnvValidationError";
+  }
+}
+
 /**
  * Parses and validates environment variables.
- * Call this once at startup — it throws a descriptive error on failure.
+ * @throws {EnvValidationError} if validation fails
  */
 export function parseEnv(): Env {
   const result = envSchema.safeParse(process.env);
 
   if (!result.success) {
-    const formatted = result.error.issues
-      .map((issue) => `  ${issue.path.join(".")}: ${issue.message}`)
-      .join("\n");
-
-    console.error("Environment validation failed:\n" + formatted);
-    process.exit(1);
+    throw new EnvValidationError(result.error.issues);
   }
 
   return result.data;
 }
 
-/** Validated environment — initialized by calling `parseEnv()` at startup. */
-export let env: Env;
+let _env: Env | undefined;
 
-/** Set the module-level env singleton. Called once from main(). */
+/**
+ * Returns the validated environment singleton.
+ * @throws {Error} if called before `initEnv()`
+ */
+export function getEnv(): Env {
+  if (!_env) {
+    throw new Error("Environment not initialized. Call initEnv() first.");
+  }
+  return _env;
+}
+
+/** Initialize the environment singleton. Called once from main(). */
 export function initEnv(): void {
-  env = parseEnv();
+  _env = parseEnv();
 }

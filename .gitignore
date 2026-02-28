@@ -28,3 +28,9 @@ mcp-servers/*/node_modules/
 
 # Claude Code
 .claude/worktrees/
+
+# Dart MCP server artifacts (auto-generated)
+.dart_tool/
+pubspec.yaml
+pubspec.lock
+analysis_options.yaml

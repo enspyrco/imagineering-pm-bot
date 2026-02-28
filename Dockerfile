@@ -19,15 +19,15 @@ RUN pnpm install --frozen-lockfile
 ARG INSTALL_PLAYWRIGHT=true
 RUN if [ "$INSTALL_PLAYWRIGHT" = "true" ]; then npx playwright install --with-deps chromium; fi
 
-# Install MCP server dependencies
-COPY mcp-servers/packages/kan/package.json mcp-servers/packages/kan/
-RUN cd mcp-servers/packages/kan && pnpm install
+# Install MCP server dependencies (lockfiles will exist once submodules are added)
+COPY mcp-servers/packages/kan/package.json mcp-servers/packages/kan/pnpm-lock.yaml* mcp-servers/packages/kan/
+RUN cd mcp-servers/packages/kan && pnpm install --frozen-lockfile 2>/dev/null || pnpm install
 
-COPY mcp-servers/packages/outline/package.json mcp-servers/packages/outline/
-RUN cd mcp-servers/packages/outline && pnpm install
+COPY mcp-servers/packages/outline/package.json mcp-servers/packages/outline/pnpm-lock.yaml* mcp-servers/packages/outline/
+RUN cd mcp-servers/packages/outline && pnpm install --frozen-lockfile 2>/dev/null || pnpm install
 
-COPY mcp-servers/packages/radicale/package.json mcp-servers/packages/radicale/
-RUN cd mcp-servers/packages/radicale && pnpm install
+COPY mcp-servers/packages/radicale/package.json mcp-servers/packages/radicale/pnpm-lock.yaml* mcp-servers/packages/radicale/
+RUN cd mcp-servers/packages/radicale && pnpm install --frozen-lockfile 2>/dev/null || pnpm install
 
 # Copy source
 COPY . .

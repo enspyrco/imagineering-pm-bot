@@ -103,20 +103,20 @@ The bot processes every message through a Claude LLM agent loop with access to ~
 
 ## Tech Stack
 
-| Component       | Technology                                     |
-| --------------- | ---------------------------------------------- |
-| Language        | Dart 3.6+                                      |
-| Runtime         | Dart VM                                        |
-| Messaging       | Signal (via signal-cli-rest-api)               |
-| LLM             | Claude Sonnet 4.6 (anthropic_sdk_dart)         |
-| MCP             | dart_mcp ^0.4.1                                |
-| Database        | SQLite (ORM TBD)                               |
-| Task Management | Kan.bn (MCP)                                   |
-| Knowledge Base  | Outline (MCP)                                  |
-| Calendar        | Radicale (MCP)                                 |
-| Web Automation  | Playwright (MCP)                               |
-| Deployment      | Docker + Docker Compose on GCP                 |
-| Package Manager | dart pub                                       |
+| Component       | Technology                             |
+| --------------- | -------------------------------------- |
+| Language        | Dart 3.6+                              |
+| Runtime         | Dart VM                                |
+| Messaging       | Signal (via signal-cli-rest-api)       |
+| LLM             | Claude Sonnet 4.6 (anthropic_sdk_dart) |
+| MCP             | dart_mcp ^0.4.1                        |
+| Database        | SQLite (ORM TBD)                       |
+| Task Management | Kan.bn (MCP)                           |
+| Knowledge Base  | Outline (MCP)                          |
+| Calendar        | Radicale (MCP)                         |
+| Web Automation  | Playwright (MCP)                       |
+| Deployment      | Docker + Docker Compose on GCP         |
+| Package Manager | dart pub                               |
 
 ## Getting Started
 
@@ -312,16 +312,16 @@ model.
 This project is a direct adaptation of **xdeca-pm-bot** (private repo), a production
 Telegram bot serving the xDeca organization. The core architecture is identical:
 
-| Aspect             | xdeca-pm-bot           | imagineering-pm-bot       |
-| ------------------ | ---------------------- | ------------------------- |
-| Language           | TypeScript             | Dart                      |
+| Aspect             | xdeca-pm-bot           | imagineering-pm-bot          |
+| ------------------ | ---------------------- | ---------------------------- |
+| Language           | TypeScript             | Dart                         |
 | Messaging          | Telegram (grammY)      | Signal (signal-cli-rest-api) |
-| Organization       | xDeca                  | Imagineering              |
-| LLM                | Claude Sonnet 4.6      | Claude Sonnet 4.6         |
-| MCP Tools          | Kan, Outline, Radicale | Kan, Outline, Radicale    |
-| Database           | SQLite + Drizzle       | SQLite (ORM TBD)          |
-| Agent Architecture | Same                   | Same                      |
-| Deployment         | Docker on GCP          | Docker on GCP             |
+| Organization       | xDeca                  | Imagineering                 |
+| LLM                | Claude Sonnet 4.6      | Claude Sonnet 4.6            |
+| MCP Tools          | Kan, Outline, Radicale | Kan, Outline, Radicale       |
+| Database           | SQLite + Drizzle       | SQLite (ORM TBD)             |
+| Agent Architecture | Same                   | Same                         |
+| Deployment         | Docker on GCP          | Docker on GCP                |
 
 ### Key Differences from Telegram
 

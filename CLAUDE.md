@@ -18,17 +18,17 @@ correctness and type safety, but bias toward shipping.
 
 ## Tech Stack
 
-| Layer           | Technology                            |
-| --------------- | ------------------------------------- |
-| Language        | Dart 3.6+                             |
-| Runtime         | Dart VM                               |
-| Messaging       | Signal (via signal-cli-rest-api)      |
-| LLM             | Claude Sonnet 4.6 (anthropic_sdk_dart)|
-| MCP             | dart_mcp ^0.4.1                       |
-| Database        | SQLite (ORM TBD)                      |
-| MCP Tools       | Kan.bn, Outline, Radicale, Playwright |
-| Deployment      | Docker on GCP                         |
-| Package Manager | dart pub                              |
+| Layer           | Technology                             |
+| --------------- | -------------------------------------- |
+| Language        | Dart 3.6+                              |
+| Runtime         | Dart VM                                |
+| Messaging       | Signal (via signal-cli-rest-api)       |
+| LLM             | Claude Sonnet 4.6 (anthropic_sdk_dart) |
+| MCP             | dart_mcp ^0.4.1                        |
+| Database        | SQLite (ORM TBD)                       |
+| MCP Tools       | Kan.bn, Outline, Radicale, Playwright  |
+| Deployment      | Docker on GCP                          |
+| Package Manager | dart pub                               |
 
 ## Project Structure
 

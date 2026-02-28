@@ -1,9 +1,10 @@
 import "dotenv/config";
-import { initEnv, env } from "./config/env.js";
+import { initEnv, getEnv } from "./config/env.js";
 
 function main(): void {
   // Validate environment first — fails fast on bad config
   initEnv();
+  const env = getEnv();
 
   console.log(`Starting ${env.BOT_NAME} (imagineering-pm-bot)...`);
   console.log(`  Environment: ${env.NODE_ENV}`);
@@ -28,13 +29,14 @@ try {
   process.exit(1);
 }
 
-// Graceful shutdown
-function shutdown(): void {
+// Graceful shutdown — async because future phases add awaitable cleanup
+// eslint-disable-next-line @typescript-eslint/require-await
+async function shutdown(): Promise<void> {
   console.log("Shutting down...");
-  // TODO: Shutdown MCP servers
-  // TODO: Close database connection
+  // TODO: Shutdown MCP servers (await mcpManager.shutdown())
+  // TODO: Close database connection (await db.close())
   process.exit(0);
 }
 
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
+process.on("SIGINT", () => void shutdown());
+process.on("SIGTERM", () => void shutdown());
