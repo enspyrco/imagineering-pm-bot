@@ -10,8 +10,11 @@ import 'package:imagineering_pm_bot/src/agent/tool_registry.dart';
 import 'package:imagineering_pm_bot/src/config/env.dart';
 import 'package:imagineering_pm_bot/src/db/database.dart';
 import 'package:imagineering_pm_bot/src/db/message_repository.dart';
+import 'package:imagineering_pm_bot/src/db/queries.dart';
 import 'package:imagineering_pm_bot/src/mcp/mcp_manager.dart';
 import 'package:imagineering_pm_bot/src/signal/signal_client.dart';
+import 'package:imagineering_pm_bot/src/tools/bot_identity_tools.dart';
+import 'package:imagineering_pm_bot/src/tools/chat_config_tools.dart';
 
 const _pollIntervalSeconds = 5;
 
@@ -76,10 +79,15 @@ Future<void> main() async {
   }
 
   final serverNames = mcpManager.getServerNames();
-  _log('MCP servers: ${serverNames.isEmpty ? "(none)" : serverNames.join(", ")}');
+  _log(
+      'MCP servers: ${serverNames.isEmpty ? "(none)" : serverNames.join(", ")}');
+
+  final queries = Queries(database);
 
   final toolRegistry = ToolRegistry();
   toolRegistry.setMcpManager(mcpManager);
+  registerBotIdentityTools(toolRegistry, queries);
+  registerChatConfigTools(toolRegistry, queries);
 
   final history = ConversationHistory(repository: messageRepo);
   final anthropicClient = anthropic.AnthropicClient(
@@ -106,6 +114,10 @@ Future<void> main() async {
   ProcessSignal.sigint.watch().listen((_) => shutdown());
   ProcessSignal.sigterm.watch().listen((_) => shutdown());
 
+  // Resolve the bot's identity name for mention detection in groups.
+  String botNameLower() =>
+      (queries.getBotIdentity()?.name ?? env.botName).toLowerCase();
+
   _log('Figment is running! Polling every ${_pollIntervalSeconds}s...');
 
   while (true) {
@@ -113,8 +125,16 @@ Future<void> main() async {
       final envelopes = await signalClient.receiveMessages();
       for (final envelope in envelopes) {
         if (!envelope.hasTextMessage) continue;
+
         final text = envelope.dataMessage!.message!;
-        _log('Message from ${envelope.source}: $text');
+        final isGroup = envelope.isGroupMessage;
+
+        // In group chats, only respond when the bot name is mentioned.
+        if (isGroup && !text.toLowerCase().contains(botNameLower())) {
+          continue;
+        }
+
+        _log('${isGroup ? "[group] " : ""}Message from ${envelope.source}: $text');
 
         try {
           final input = AgentInput(
@@ -123,9 +143,18 @@ Future<void> main() async {
             senderUuid: envelope.sourceUuid,
             isAdmin: false,
           );
+          // Detect first contact: no workspace link for this group yet.
+          final isFirstContact =
+              queries.getWorkspaceLink(envelope.chatId) == null;
+
           final response = await agentLoop.processMessage(
             input,
-            systemPrompt: buildSystemPrompt(input, botName: env.botName),
+            systemPrompt: buildSystemPrompt(
+              input,
+              botName: env.botName,
+              identity: queries.getBotIdentity(),
+              isFirstContact: isFirstContact,
+            ),
           );
           if (response.isNotEmpty) {
             _log('Responding to ${envelope.chatId}: '
