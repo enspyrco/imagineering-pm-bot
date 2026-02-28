@@ -12,8 +12,6 @@ services:
   bot:
     build:
       context: .
-      args:
-        INSTALL_PLAYWRIGHT: "true"
     depends_on:
       - signal-api
     env_file:

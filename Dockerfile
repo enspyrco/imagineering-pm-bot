@@ -39,6 +39,4 @@ COPY --from=build /app/bin/figment /app/bin/figment
 
 RUN mkdir -p /app/data
 
-ENV NODE_ENV=production
-
 CMD ["/app/bin/figment"]
