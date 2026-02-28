@@ -4,9 +4,9 @@
 
 An AI-powered project management bot for Signal, built for the Imagineering organization. Named after the beloved purple dragon from EPCOT's Journey Into Imagination — the mascot of Walt Disney Imagineering — **Figment** turns sparks of ideas into organized tasks, docs, and team coordination.
 
-The bot processes every message through a Claude LLM agent loop with access to task management (Kan.bn), knowledge base (Outline), calendar (Radicale), and web automation (Playwright) tools. No slash commands — just natural language.
+The bot processes every message through a Claude LLM agent loop with access to ~75 tools across task management (Kan.bn), knowledge base (Outline), calendar (Radicale), web automation (Playwright), and custom bot tools. No slash commands — just natural language.
 
-> **Status**: Early-stage planning. Adapted from [xdeca-pm-bot](https://github.com/xdeca/xdeca-pm-bot), a production Telegram bot with the same architecture.
+> **Status**: Early-stage planning. No source code yet — docs and architecture only. Adapted from xdeca-pm-bot, a production Telegram bot with the same architecture.
 
 ## Architecture
 
@@ -124,15 +124,18 @@ The bot processes every message through a Claude LLM agent loop with access to t
 
 ### Installation
 
+> **Note**: The project is in early planning. These steps will work once scaffolding
+> is complete.
+
 ```bash
 # Clone with submodules (MCP servers)
-git clone --recurse-submodules https://github.com/enspyrco/imagineering-pm-bot.git
+git clone --recurse-submodules git@github.com:enspyrco/imagineering-pm-bot.git
 cd imagineering-pm-bot
 
 # Install dependencies
 pnpm install
 
-# Copy environment template
+# Set up environment
 cp .env.example .env
 # Edit .env with your credentials
 
@@ -146,16 +149,29 @@ pnpm dev
 
 ### Environment Configuration
 
-See `CLAUDE.md` for the full list of environment variables. At minimum you need:
+All environment variables (will be documented in `.env.example` once scaffolding is
+complete):
 
 ```bash
-ANTHROPIC_API_KEY=sk-ant-...
-SIGNAL_PHONE_NUMBER=+1234567890
-SIGNAL_API_URL=http://localhost:8080   # if using signal-cli-rest-api
-KAN_BASE_URL=https://kan.example.com
-KAN_API_KEY=...
-OUTLINE_BASE_URL=https://outline.example.com
-OUTLINE_API_KEY=...
+# Required
+ANTHROPIC_API_KEY=            # Claude API key
+SIGNAL_PHONE_NUMBER=          # Bot's registered Signal phone number
+SIGNAL_API_URL=               # signal-cli-rest-api base URL (if using REST approach)
+KAN_BASE_URL=                 # Kan.bn instance URL
+KAN_API_KEY=                  # Kan.bn API key
+OUTLINE_BASE_URL=             # Outline instance URL
+OUTLINE_API_KEY=              # Outline API key
+
+# Radicale (optional — calendar/contacts features)
+RADICALE_BASE_URL=            # Radicale CalDAV/CardDAV server URL
+RADICALE_USERNAME=            # Radicale auth username
+RADICALE_PASSWORD=            # Radicale auth password
+
+# Bot Config (all optional, have defaults)
+BOT_NAME=                     # Display name (default: "Figment")
+DATABASE_PATH=                # SQLite path (default: ./data/bot.db)
+LOG_LEVEL=                    # Logging level (default: info)
+NODE_ENV=                     # production | development
 ```
 
 ## Signal Bot Setup (TBD)
@@ -165,8 +181,8 @@ Signal does not have an official bot API. We are evaluating two approaches:
 ### Option A: signal-cli-rest-api (Sidecar Container)
 
 [signal-cli-rest-api](https://github.com/bbernhard/signal-cli-rest-api) is the most
-mature solution (2.4k+ stars, 92 releases, actively maintained). It wraps signal-cli
-in a Docker container exposing REST endpoints.
+mature solution — actively maintained with a large community. It wraps signal-cli in a
+Docker container exposing REST endpoints.
 
 ```yaml
 # docker-compose.yml (simplified)
@@ -228,15 +244,16 @@ bot.start();
 
 ## MCP Integration
 
-MCP (Model Context Protocol) servers run as child processes and expose tools that
-Claude can invoke during the agent loop. They are included as a git submodule.
+MCP (Model Context Protocol) servers will run as child processes and expose tools that
+Claude can invoke during the agent loop. They will be included as a git submodule at
+`mcp-servers/` (not yet set up).
 
 ```bash
-# Initialize MCP servers
+# Initialize MCP servers (once submodule is added)
 git submodule update --init --recursive
 ```
 
-### Available Tool Sets
+### Available Tool Sets (~75 tools total)
 
 | Server     | Tools | Examples                                              |
 | ---------- | ----- | ----------------------------------------------------- |
@@ -336,8 +353,8 @@ model.
 
 ## Relationship to xdeca-pm-bot
 
-This project is a direct adaptation of **xdeca-pm-bot**, a production Telegram bot
-serving the xDeca organization. The core architecture is identical:
+This project is a direct adaptation of **xdeca-pm-bot** (private repo), a production
+Telegram bot serving the xDeca organization. The core architecture is identical:
 
 | Aspect             | xdeca-pm-bot           | imagineering-pm-bot     |
 | ------------------ | ---------------------- | ----------------------- |
