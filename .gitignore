@@ -1,8 +1,7 @@
-# Dependencies
-node_modules/
-
-# Build
-dist/
+# Dart
+.dart_tool/
+.packages
+build/
 
 # Database
 data/
@@ -20,17 +19,8 @@ data/
 # Signal
 signal-cli-config/
 
-# MCP servers (submodule deps)
-mcp-servers/*/node_modules/
-
 # Playwright
 .playwright-mcp/
 
 # Claude Code
 .claude/worktrees/
-
-# Dart MCP server artifacts (auto-generated)
-.dart_tool/
-pubspec.yaml
-pubspec.lock
-analysis_options.yaml
