@@ -126,7 +126,7 @@ The bot processes every message through a Claude LLM agent loop with access to t
 
 ```bash
 # Clone with submodules (MCP servers)
-git clone --recurse-submodules https://github.com/imagineering/imagineering-pm-bot.git
+git clone --recurse-submodules https://github.com/enspyrco/imagineering-pm-bot.git
 cd imagineering-pm-bot
 
 # Install dependencies
