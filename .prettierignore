@@ -1,0 +1,8 @@
+pnpm-lock.yaml
+dist/
+drizzle/
+mcp-servers/
+.dart_tool/
+pubspec.yaml
+pubspec.lock
+analysis_options.yaml
