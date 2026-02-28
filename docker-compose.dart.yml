@@ -1,0 +1,41 @@
+# Docker Compose for Figment (Dart) + signal-cli-rest-api
+#
+# Usage:
+#   docker compose -f docker-compose.dart.yml up -d
+#   docker compose -f docker-compose.dart.yml logs -f bot
+#
+# First-time setup:
+#   1. Start signal-api: docker compose -f docker-compose.dart.yml up -d signal-api
+#   2. Link device: curl -X POST 'http://localhost:8080/v1/qrcodelink?device_name=figment'
+#   3. Scan QR code with Signal on your phone
+#   4. Set SIGNAL_PHONE_NUMBER in .env
+#   5. Start bot: docker compose -f docker-compose.dart.yml up -d
+
+services:
+  signal-api:
+    image: bbernhard/signal-cli-rest-api:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - signal-data:/home/.local/share/signal-cli
+    environment:
+      - MODE=json-rpc
+    restart: unless-stopped
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - signal-api
+    env_file:
+      - .env
+    environment:
+      - SIGNAL_API_URL=http://signal-api:8080
+    volumes:
+      - bot-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  signal-data:
+  bot-data:

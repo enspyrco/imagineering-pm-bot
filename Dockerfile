@@ -1,46 +1,44 @@
+# Multi-stage Dockerfile for Figment (Dart)
+#
+# Stage 1: Compile Dart to native AOT binary
+# Stage 2: Minimal runtime with Node.js (for MCP server subprocesses)
+
+# --- Build stage ---
+FROM dart:3.6 AS build
+
+WORKDIR /app
+
+COPY pubspec.yaml pubspec.lock* ./
+RUN dart pub get
+
+COPY lib/ lib/
+COPY bin/ bin/
+
+RUN dart compile exe bin/figment.dart -o bin/figment
+
+# --- Runtime stage ---
 FROM node:22-slim
 
 WORKDIR /app
 
-# Install build tools for native modules (better-sqlite3)
-RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
+# Install MCP server dependencies (if submodule exists).
+COPY mcp-servers/packages/kan/package.json mcp-servers/packages/kan/
+COPY mcp-servers/packages/kan/ mcp-servers/packages/kan/
+RUN cd mcp-servers/packages/kan && npm install --omit=dev 2>/dev/null || true
 
-# Enable pnpm via Corepack
-RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+COPY mcp-servers/packages/outline/package.json mcp-servers/packages/outline/
+COPY mcp-servers/packages/outline/ mcp-servers/packages/outline/
+RUN cd mcp-servers/packages/outline && npm install --omit=dev 2>/dev/null || true
 
-# Copy package files
-COPY package.json pnpm-lock.yaml* ./
+COPY mcp-servers/packages/radicale/package.json mcp-servers/packages/radicale/
+COPY mcp-servers/packages/radicale/ mcp-servers/packages/radicale/
+RUN cd mcp-servers/packages/radicale && npm install --omit=dev 2>/dev/null || true
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Copy compiled binary from build stage.
+COPY --from=build /app/bin/figment /app/bin/figment
 
-# Install Playwright Chromium browser + system deps (for web browsing MCP server)
-# Skipped when INSTALL_PLAYWRIGHT=false to keep the image smaller
-ARG INSTALL_PLAYWRIGHT=true
-RUN if [ "$INSTALL_PLAYWRIGHT" = "true" ]; then npx playwright install --with-deps chromium; fi
-
-# Install MCP server dependencies (lockfiles will exist once submodules are added)
-COPY mcp-servers/packages/kan/package.json mcp-servers/packages/kan/pnpm-lock.yaml* mcp-servers/packages/kan/
-RUN cd mcp-servers/packages/kan && pnpm install --frozen-lockfile 2>/dev/null || pnpm install
-
-COPY mcp-servers/packages/outline/package.json mcp-servers/packages/outline/pnpm-lock.yaml* mcp-servers/packages/outline/
-RUN cd mcp-servers/packages/outline && pnpm install --frozen-lockfile 2>/dev/null || pnpm install
-
-COPY mcp-servers/packages/radicale/package.json mcp-servers/packages/radicale/pnpm-lock.yaml* mcp-servers/packages/radicale/
-RUN cd mcp-servers/packages/radicale && pnpm install --frozen-lockfile 2>/dev/null || pnpm install
-
-# Copy source
-COPY . .
-
-# Build TypeScript
-RUN pnpm build
-
-# Create data directory for SQLite
 RUN mkdir -p /app/data
 
-# Set environment defaults
 ENV NODE_ENV=production
-ENV DATABASE_PATH=/app/data/bot.db
 
-# Run the bot
-CMD ["node", "dist/index.js"]
+CMD ["/app/bin/figment"]
