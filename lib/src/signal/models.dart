@@ -71,21 +71,31 @@ class SignalEnvelope {
 }
 
 /// A Signal group returned by `GET /v1/groups/{number}`.
+///
+/// The `id` field (e.g. `group.BASE64...`) is used for sending messages.
+/// The `internalId` (raw base64) matches the `groupInfo.groupId` in envelopes.
 class SignalGroup {
   const SignalGroup({
     required this.id,
+    required this.internalId,
     required this.name,
     this.members = const [],
   });
 
   factory SignalGroup.fromJson(Map<String, dynamic> json) => SignalGroup(
-        id: json['id'] as String? ?? json['internal_id'] as String? ?? '',
+        id: json['id'] as String? ?? '',
+        internalId: json['internal_id'] as String? ?? '',
         name: json['name'] as String? ?? '',
         members: (json['members'] as List<dynamic>?)?.cast<String>() ??
             const <String>[],
       );
 
+  /// The `group.BASE64...` identifier used by the send endpoint.
   final String id;
+
+  /// The raw base64 group ID matching `groupInfo.groupId` in envelopes.
+  final String internalId;
+
   final String name;
   final List<String> members;
 }

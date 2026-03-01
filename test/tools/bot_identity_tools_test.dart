@@ -15,6 +15,12 @@ void main() {
     db = BotDatabase.inMemory();
     queries = Queries(db);
     registry = ToolRegistry();
+    // Set admin context so admin-gated tools pass.
+    registry.setContext(const ToolContext(
+      senderUuid: 'test-admin',
+      isAdmin: true,
+      chatId: 'test-chat',
+    ));
     registerBotIdentityTools(registry, queries);
   });
 
@@ -27,7 +33,7 @@ void main() {
       final result = await registry.executeTool('get_bot_identity', {});
       final data = jsonDecode(result) as Map<String, dynamic>;
 
-      expect(data['name'], equals('Figment'));
+      expect(data['name'], equals('Dreamfinder'));
       expect(data['pronouns'], equals('they/them'));
       expect(data['tone'], equals('Playful, imaginative, and helpful'));
       expect(data['chosen_at'], isNull);
@@ -100,6 +106,25 @@ void main() {
       expect(
           identity!.toneDescription, equals('Speaks like a Victorian butler'));
       expect(identity.chosenInGroupId, equals('group-123'));
+    });
+
+    test('rejects non-admin callers', () async {
+      registry.setContext(const ToolContext(
+        senderUuid: 'non-admin-user',
+        isAdmin: false,
+        chatId: 'test-chat',
+      ));
+
+      final result = await registry.executeTool('set_bot_identity', {
+        'name': 'Hacker',
+        'pronouns': 'they/them',
+        'tone': 'malicious',
+      });
+      final data = jsonDecode(result) as Map<String, dynamic>;
+
+      expect(data['error'], contains('admin'));
+      // Verify nothing was saved.
+      expect(queries.getBotIdentity(), isNull);
     });
   });
 }

@@ -14,7 +14,7 @@ import 'agent_loop.dart';
 /// ceremony"). This is triggered when a group has no workspace link yet.
 String buildSystemPrompt(
   AgentInput input, {
-  String botName = 'Figment',
+  String botName = 'Dreamfinder',
   BotIdentityRecord? identity,
   bool isFirstContact = false,
 }) {

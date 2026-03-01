@@ -10,7 +10,7 @@ import '../agent/tool_registry.dart';
 import '../db/queries.dart';
 
 /// Default identity used when no record exists in the database.
-const defaultBotName = 'Figment';
+const defaultBotName = 'Dreamfinder';
 const defaultPronouns = 'they/them';
 const defaultTone = 'Playful, imaginative, and helpful';
 
@@ -55,6 +55,7 @@ CustomToolDef _getIdentityTool(Queries queries) {
 
 CustomToolDef _setIdentityTool(Queries queries) {
   return CustomToolDef(
+    requiresAdmin: true,
     name: 'set_bot_identity',
     description: 'Set the bot\'s identity. Admin-only — updates the name, '
         'pronouns, and communication tone. The new identity takes effect '

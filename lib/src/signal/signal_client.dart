@@ -18,6 +18,11 @@ class SignalClient {
   final String phoneNumber;
   final http.Client _client;
 
+  /// Maps group `internal_id` (from envelopes) → `id` (for sending).
+  ///
+  /// Populated by [loadGroupMappings] on startup. Lazy-refreshed on cache miss.
+  final Map<String, String> _groupIdMap = {};
+
   static const _jsonHeaders = <String, String>{
     'Content-Type': 'application/json',
   };
@@ -38,17 +43,41 @@ class SignalClient {
     return list.cast<String>();
   }
 
+  /// Fetches groups and populates the `internal_id` → `id` mapping.
+  ///
+  /// Call once on startup. The mapping is refreshed lazily when [sendMessage]
+  /// encounters an unknown group.
+  Future<void> loadGroupMappings() async {
+    final groups = await listGroups();
+    for (final group in groups) {
+      _groupIdMap[group.internalId] = group.id;
+    }
+  }
+
   /// Sends a text message to a user or group. `POST /v2/send`
   ///
-  /// If [recipient] looks like a phone number (starts with '+') it is sent
-  /// as-is. Otherwise it is treated as a base64 group ID and prefixed with
-  /// `group.` for the signal-cli-rest-api.
+  /// [recipient] can be:
+  /// - A phone number (starts with '+')
+  /// - A UUID (contains '-', 36 chars) — used for 1:1 chats
+  /// - A group `internal_id` — resolved to the send-format `id` via cache
   Future<SendMessageResponse> sendMessage({
     required String recipient,
     required String message,
   }) async {
-    final formattedRecipient =
-        recipient.startsWith('+') ? recipient : 'group.$recipient';
+    String formattedRecipient;
+    if (recipient.startsWith('+') || _isUuid(recipient)) {
+      // Phone number or UUID — send directly.
+      formattedRecipient = recipient;
+    } else {
+      // Resolve group internal_id → id. Refresh mapping on cache miss.
+      var groupId = _groupIdMap[recipient];
+      if (groupId == null) {
+        await loadGroupMappings();
+        groupId = _groupIdMap[recipient];
+      }
+      formattedRecipient = groupId ?? 'group.$recipient';
+    }
+
     final body = <String, dynamic>{
       'message': message,
       'number': phoneNumber,
@@ -98,6 +127,13 @@ class SignalClient {
       body: jsonEncode(<String, String>{'recipient': recipient}),
     );
   }
+
+  static final _uuidPattern = RegExp(
+    r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+    caseSensitive: false,
+  );
+
+  static bool _isUuid(String value) => _uuidPattern.hasMatch(value);
 
   void _ensureSuccess(http.Response response, {int expectedStatus = 200}) {
     if (response.statusCode != expectedStatus) {

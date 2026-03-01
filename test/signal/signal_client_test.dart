@@ -68,6 +68,19 @@ void main() {
     });
 
     test('sendMessage to group uses group ID', () async {
+      // Mock the listGroups endpoint that loadGroupMappings calls on cache miss.
+      when(() => mockClient.get(
+              Uri.parse('$baseUrl/v1/groups/$phoneNumber')))
+          .thenAnswer((_) async => http.Response(
+                jsonEncode([
+                  {
+                    'id': 'group.abc123==',
+                    'internal_id': 'abc123==',
+                    'name': 'Test Group',
+                  },
+                ]),
+                200,
+              ));
       when(() => mockClient.post(Uri.parse('$baseUrl/v2/send'),
               headers: any(named: 'headers'), body: any(named: 'body')))
           .thenAnswer((_) async => http.Response(
@@ -75,7 +88,7 @@ void main() {
                 201,
               ));
       final result = await signalClient.sendMessage(
-          recipient: 'group.abc123==', message: 'Hello group!');
+          recipient: 'abc123==', message: 'Hello group!');
       expect(result.timestamp, isNotNull);
     });
 
