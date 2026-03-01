@@ -7,7 +7,9 @@ import 'package:imagineering_pm_bot/src/agent/agent_loop.dart';
 import 'package:imagineering_pm_bot/src/agent/conversation_history.dart';
 import 'package:imagineering_pm_bot/src/agent/system_prompt.dart';
 import 'package:imagineering_pm_bot/src/agent/tool_registry.dart';
+import 'package:imagineering_pm_bot/src/bot/rate_limiter.dart';
 import 'package:imagineering_pm_bot/src/config/env.dart';
+import 'package:imagineering_pm_bot/src/cron/scheduler.dart';
 import 'package:imagineering_pm_bot/src/db/database.dart';
 import 'package:imagineering_pm_bot/src/db/message_repository.dart';
 import 'package:imagineering_pm_bot/src/db/queries.dart';
@@ -15,6 +17,7 @@ import 'package:imagineering_pm_bot/src/mcp/mcp_manager.dart';
 import 'package:imagineering_pm_bot/src/signal/signal_client.dart';
 import 'package:imagineering_pm_bot/src/tools/bot_identity_tools.dart';
 import 'package:imagineering_pm_bot/src/tools/chat_config_tools.dart';
+import 'package:imagineering_pm_bot/src/tools/standup_tools.dart';
 
 const _pollIntervalSeconds = 5;
 
@@ -59,10 +62,15 @@ Future<void> main() async {
   final mcpManager = McpManager();
 
   if (env.kanEnabled) {
-    await mcpManager.startServer(const McpServerConfig(
+    final kanPath = env.kanMcpPath ?? 'mcp-servers/kan/index.js';
+    await mcpManager.startServer(McpServerConfig(
       name: 'kan',
       command: 'node',
-      args: <String>['mcp-servers/packages/kan/index.js'],
+      args: <String>[kanPath],
+      env: <String, String>{
+        'KAN_BASE_URL': env.kanBaseUrl!,
+        'KAN_API_KEY': env.kanApiKey!,
+      },
     ));
   }
   if (env.outlineEnabled) {
@@ -90,6 +98,7 @@ Future<void> main() async {
   toolRegistry.setMcpManager(mcpManager);
   registerBotIdentityTools(toolRegistry, queries);
   registerChatConfigTools(toolRegistry, queries);
+  registerStandupTools(toolRegistry, queries);
 
   final history = ConversationHistory(repository: messageRepo);
   final anthropicClient = anthropic.AnthropicClient(
@@ -105,8 +114,19 @@ Future<void> main() async {
     onTyping: (chatId) => signalClient.sendTypingIndicator(recipient: chatId),
   );
 
+  final rateLimiter = RateLimiter();
+
+  final scheduler = Scheduler(
+    queries: queries,
+    sendMessage: (groupId, message) =>
+        signalClient.sendMessage(recipient: groupId, message: message),
+  );
+  scheduler.start();
+  _log('Scheduler started.');
+
   void shutdown() {
     _log('Shutting down...');
+    scheduler.stop();
     database.close();
     mcpManager.shutdown();
     anthropicClient.endSession();
@@ -149,6 +169,15 @@ Future<void> main() async {
           continue;
         }
 
+        // Rate limit check — prevents spam from a single user or group.
+        if (!rateLimiter.shouldAllow(
+          chatId: envelope.chatId,
+          senderUuid: envelope.sourceUuid,
+        )) {
+          _log('Rate limited: ${envelope.source} in ${envelope.chatId}');
+          continue;
+        }
+
         _log('${isGroup ? "[group] " : ""}Message from ${envelope.source}: $text');
 
         try {
@@ -164,18 +193,12 @@ Future<void> main() async {
             senderUuid: envelope.sourceUuid,
             isAdmin: senderIsAdmin,
           );
-          // Detect first contact: no workspace link for this group yet.
-          // Only applies to group chats — DMs never have workspace links.
-          final isFirstContact =
-              isGroup && queries.getWorkspaceLink(envelope.chatId) == null;
-
           final response = await agentLoop.processMessage(
             input,
             systemPrompt: buildSystemPrompt(
               input,
               botName: env.botName,
               identity: queries.getBotIdentity(),
-              isFirstContact: isFirstContact,
             ),
           );
           if (response.isNotEmpty) {

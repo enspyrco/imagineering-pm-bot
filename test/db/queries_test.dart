@@ -300,14 +300,14 @@ void main() {
 
     test('saveBotIdentity then getBotIdentity round-trips', () {
       q.saveBotIdentity(
-        name: 'Figment',
+        name: 'Dreamfinder',
         pronouns: 'they/them',
         tone: 'playful',
       );
 
       final identity = q.getBotIdentity();
       expect(identity, isNotNull);
-      expect(identity!.name, equals('Figment'));
+      expect(identity!.name, equals('Dreamfinder'));
       expect(identity.pronouns, equals('they/them'));
       expect(identity.tone, equals('playful'));
     });

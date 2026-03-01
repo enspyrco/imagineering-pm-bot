@@ -20,14 +20,14 @@ void main() {
       repo.saveMessage(
         chatId: 'chat-1',
         role: MessageRole.user,
-        content: 'Hello Figment!',
+        content: 'Hello Dreamfinder!',
         senderUuid: 'uuid-abc',
         senderName: 'Alice',
       );
 
       final messages = repo.getMessages(chatId: 'chat-1');
       expect(messages, hasLength(1));
-      expect(messages.first.content, equals('Hello Figment!'));
+      expect(messages.first.content, equals('Hello Dreamfinder!'));
       expect(messages.first.role, equals(MessageRole.user));
       expect(messages.first.senderName, equals('Alice'));
     });
@@ -36,7 +36,7 @@ void main() {
       repo.saveMessage(
         chatId: 'chat-1',
         role: MessageRole.assistant,
-        content: 'Hello! I am Figment.',
+        content: 'Hello! I am Dreamfinder.',
       );
 
       final messages = repo.getMessages(chatId: 'chat-1');

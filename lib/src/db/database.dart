@@ -4,7 +4,7 @@ import 'package:sqlite3/sqlite3.dart';
 /// [_runMigrations] whenever the schema changes.
 const schemaVersion = 1;
 
-/// SQLite database wrapper for Figment.
+/// SQLite database wrapper for Dreamfinder.
 ///
 /// Manages the connection, schema versioning, and migrations. Use
 /// [BotDatabase.open] for file-based persistence or [BotDatabase.inMemory]

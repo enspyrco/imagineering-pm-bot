@@ -1,4 +1,4 @@
-/// Schema model classes and enums for the Figment database.
+/// Schema model classes and enums for the Dreamfinder database.
 ///
 /// These types represent rows from the 10 domain tables adapted from
 /// xdeca-pm-bot (Telegram) to Signal. Key differences from Telegram:

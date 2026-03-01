@@ -87,7 +87,7 @@ void main() {
           chatId: env.source,
           senderUuid: env.sourceUuid,
           isAdmin: false),
-      systemPrompt: 'You are Figment.',
+      systemPrompt: 'You are Dreamfinder.',
     );
     expect(response, contains('Sprint Backlog'));
     expect(response, contains('Design'));

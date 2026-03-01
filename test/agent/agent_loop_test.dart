@@ -19,7 +19,7 @@ void main() {
         createMessage: (m, t, s) async {
           callCount++;
           return const AgentResponse(
-            textBlocks: [TextContent(text: 'Hello! I am Figment.')],
+            textBlocks: [TextContent(text: 'Hello! I am Dreamfinder.')],
             toolUseBlocks: [],
             stopReason: StopReason.endTurn,
           );
@@ -30,9 +30,9 @@ void main() {
       final result = await loop.processMessage(
         const AgentInput(
             text: 'Hi', chatId: 'c1', senderUuid: 'u1', isAdmin: false),
-        systemPrompt: 'You are Figment.',
+        systemPrompt: 'You are Dreamfinder.',
       );
-      expect(result, equals('Hello! I am Figment.'));
+      expect(result, equals('Hello! I am Dreamfinder.'));
       expect(callCount, equals(1));
     });
 
@@ -72,7 +72,7 @@ void main() {
       final result = await loop.processMessage(
         const AgentInput(
             text: 'What time?', chatId: 'c1', senderUuid: 'u1', isAdmin: false),
-        systemPrompt: 'You are Figment.',
+        systemPrompt: 'You are Dreamfinder.',
       );
       expect(result, contains('2026-02-28T12:00:00Z'));
       expect(callCount, equals(2));
@@ -110,7 +110,7 @@ void main() {
       final result = await loop.processMessage(
         const AgentInput(
             text: 'Do it', chatId: 'c1', senderUuid: 'u1', isAdmin: false),
-        systemPrompt: 'You are Figment.',
+        systemPrompt: 'You are Dreamfinder.',
       );
       expect(callCount, equals(3));
       expect(result, isNotEmpty);
@@ -152,7 +152,7 @@ void main() {
       final result = await loop.processMessage(
         const AgentInput(
             text: 'Use it', chatId: 'c1', senderUuid: 'u1', isAdmin: false),
-        systemPrompt: 'You are Figment.',
+        systemPrompt: 'You are Dreamfinder.',
       );
       expect(result, contains('not working'));
       expect(callCount, equals(2));

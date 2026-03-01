@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile for Figment (Dart)
+# Multi-stage Dockerfile for Dreamfinder (Dart)
 #
 # Stage 1: Compile Dart to native AOT binary
 # Stage 2: Minimal runtime with Node.js (for MCP server subprocesses)
