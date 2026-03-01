@@ -14,7 +14,7 @@ class Env {
     this.radicaleUsername,
     this.radicalePassword,
     this.adminUuids = const [],
-    this.botName = 'Figment',
+    this.botName = 'Dreamfinder',
     this.databasePath = './data/bot.db',
     this.logLevel = 'info',
   });
@@ -45,7 +45,7 @@ class Env {
       radicaleUsername: dotEnv['RADICALE_USERNAME'],
       radicalePassword: dotEnv['RADICALE_PASSWORD'],
       adminUuids: _parseList(dotEnv['ADMIN_UUIDS']),
-      botName: dotEnv['BOT_NAME'] ?? 'Figment',
+      botName: dotEnv['BOT_NAME'] ?? 'Dreamfinder',
       databasePath: dotEnv['DATABASE_PATH'] ?? './data/bot.db',
       logLevel: dotEnv['LOG_LEVEL'] ?? 'info',
     );
@@ -63,7 +63,7 @@ class Env {
     String? radicaleUsername,
     String? radicalePassword,
     List<String> adminUuids = const [],
-    String botName = 'Figment',
+    String botName = 'Dreamfinder',
     String databasePath = './data/bot.db',
     String logLevel = 'info',
   }) =>

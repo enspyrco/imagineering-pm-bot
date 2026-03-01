@@ -56,19 +56,20 @@ class SignalClient {
 
   /// Sends a text message to a user or group. `POST /v2/send`
   ///
-  /// If [recipient] starts with '+' it is treated as a phone number.
-  /// Otherwise it is treated as a group `internal_id` from an envelope and
-  /// resolved to the `id` the signal-cli-rest-api expects via the cached
-  /// group mapping (refreshed on cache miss).
+  /// [recipient] can be:
+  /// - A phone number (starts with '+')
+  /// - A UUID (contains '-', 36 chars) — used for 1:1 chats
+  /// - A group `internal_id` — resolved to the send-format `id` via cache
   Future<SendMessageResponse> sendMessage({
     required String recipient,
     required String message,
   }) async {
     String formattedRecipient;
-    if (recipient.startsWith('+')) {
+    if (recipient.startsWith('+') || _isUuid(recipient)) {
+      // Phone number or UUID — send directly.
       formattedRecipient = recipient;
     } else {
-      // Resolve internal_id → id. Refresh mapping on cache miss.
+      // Resolve group internal_id → id. Refresh mapping on cache miss.
       var groupId = _groupIdMap[recipient];
       if (groupId == null) {
         await loadGroupMappings();
@@ -126,6 +127,13 @@ class SignalClient {
       body: jsonEncode(<String, String>{'recipient': recipient}),
     );
   }
+
+  static final _uuidPattern = RegExp(
+    r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+    caseSensitive: false,
+  );
+
+  static bool _isUuid(String value) => _uuidPattern.hasMatch(value);
 
   void _ensureSuccess(http.Response response, {int expectedStatus = 200}) {
     if (response.statusCode != expectedStatus) {

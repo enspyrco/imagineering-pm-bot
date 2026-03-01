@@ -10,7 +10,7 @@ import '../agent/tool_registry.dart';
 import '../db/queries.dart';
 
 /// Default identity used when no record exists in the database.
-const defaultBotName = 'Figment';
+const defaultBotName = 'Dreamfinder';
 const defaultPronouns = 'they/them';
 const defaultTone = 'Playful, imaginative, and helpful';
 

@@ -26,7 +26,7 @@ void _log(String message, {String name = 'main', bool isError = false}) {
 }
 
 Future<void> main() async {
-  _log('Starting Figment...');
+  _log('Starting Dreamfinder...');
 
   final env = Env.load();
   _log('Config loaded: bot=${env.botName}, signal=${env.signalApiUrl}');
@@ -129,7 +129,7 @@ Future<void> main() async {
   // Wire up identity change callback so the cache stays warm.
   registerBotIdentityOnChanged(refreshBotName);
 
-  _log('Figment is running! Polling every ${_pollIntervalSeconds}s...');
+  _log('Dreamfinder is running! Polling every ${_pollIntervalSeconds}s...');
 
   while (true) {
     try {
@@ -189,6 +189,16 @@ Future<void> main() async {
           }
         } on Exception catch (e) {
           _log('Error processing message: $e', isError: true);
+
+          // Self-heal: if Claude rejects due to malformed history (orphaned
+          // tool_result blocks), clear that chat's history and retry once.
+          if (e.toString().contains('tool_use_id') ||
+              e.toString().contains('tool_result')) {
+            _log('Clearing corrupt history for ${envelope.chatId}');
+            history.clearHistory(envelope.chatId);
+            messageRepo.deleteConversation(envelope.chatId);
+          }
+
           try {
             await signalClient.sendMessage(
               recipient: envelope.chatId,
@@ -216,10 +226,24 @@ Future<void> main() async {
             'signal-api',
           ]);
           _log('signal-api restart: ${result.exitCode == 0 ? "OK" : "FAILED"}');
-          // Wait for the container to come back up.
-          await Future<void>.delayed(const Duration(seconds: 15));
-          await signalClient.loadGroupMappings();
-          _log('Reconnected and group mappings reloaded');
+          // Wait for the container to come back up with a health check loop.
+          var connected = false;
+          for (var attempt = 0; attempt < 10; attempt++) {
+            await Future<void>.delayed(const Duration(seconds: 3));
+            try {
+              await signalClient.about();
+              connected = true;
+              break;
+            } on Exception {
+              _log('Waiting for signal-api... (attempt ${attempt + 1}/10)');
+            }
+          }
+          if (connected) {
+            await signalClient.loadGroupMappings();
+            _log('Reconnected and group mappings reloaded');
+          } else {
+            _log('signal-api failed to come back up after 30s', isError: true);
+          }
         } on Exception catch (restartErr) {
           _log('Failed to restart signal-api: $restartErr', isError: true);
         }
@@ -247,12 +271,34 @@ Future<AgentResponse> _callClaude(
       ));
     } else if (msg.role == 'assistant') {
       final content = msg.content;
-      sdkMessages.add(anthropic.Message(
-        role: anthropic.MessageRole.assistant,
-        content: anthropic.MessageContent.text(
-          content is String ? content : content.toString(),
-        ),
-      ));
+      if (content is String) {
+        sdkMessages.add(anthropic.Message(
+          role: anthropic.MessageRole.assistant,
+          content: anthropic.MessageContent.text(content),
+        ));
+      } else if (content is Map<String, dynamic>) {
+        // Reconstruct proper Block content from the agent loop's Map format
+        // which contains textBlocks and toolUseBlocks.
+        final blocks = <anthropic.Block>[];
+        final textList = content['textBlocks'] as List<dynamic>? ?? [];
+        for (final t in textList) {
+          final map = t as Map<String, dynamic>;
+          blocks.add(anthropic.Block.text(text: map['text'] as String));
+        }
+        final toolList = content['toolUseBlocks'] as List<dynamic>? ?? [];
+        for (final t in toolList) {
+          final map = t as Map<String, dynamic>;
+          blocks.add(anthropic.Block.toolUse(
+            id: map['id'] as String,
+            name: map['name'] as String,
+            input: map['input'] as Map<String, dynamic>,
+          ));
+        }
+        sdkMessages.add(anthropic.Message(
+          role: anthropic.MessageRole.assistant,
+          content: anthropic.MessageContent.blocks(blocks),
+        ));
+      }
     } else if (msg.role == 'tool_result') {
       final results = msg.content as List<Map<String, dynamic>>;
       final blocks = <anthropic.Block>[

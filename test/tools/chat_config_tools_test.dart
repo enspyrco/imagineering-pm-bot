@@ -304,4 +304,63 @@ void main() {
       expect(emails, containsAll(['alice@example.com', 'bob@example.com']));
     });
   });
+
+  // -----------------------------------------------------------------------
+  // Admin enforcement
+  // -----------------------------------------------------------------------
+
+  group('admin enforcement', () {
+    test('rejects non-admin callers for admin-gated tools', () async {
+      registry.setContext(const ToolContext(
+        senderUuid: 'non-admin-user',
+        isAdmin: false,
+        chatId: 'test-chat',
+      ));
+
+      // All write operations should be rejected.
+      for (final toolName in [
+        'link_workspace',
+        'unlink_workspace',
+        'set_default_board',
+        'create_user_mapping',
+        'remove_user_mapping',
+      ]) {
+        final result = await registry.executeTool(toolName, {
+          'signal_group_id': 'g1',
+          'workspace_public_id': 'ws1',
+          'workspace_name': 'Test',
+          'created_by_uuid': 'admin',
+          'board_public_id': 'b1',
+          'board_name': 'Board',
+          'list_public_id': 'l1',
+          'list_name': 'List',
+          'signal_uuid': 'u1',
+          'kan_user_email': 'x@x.com',
+        });
+        final data = jsonDecode(result) as Map<String, dynamic>;
+        expect(data['error'], contains('admin'),
+            reason: '$toolName should require admin');
+      }
+    });
+
+    test('allows non-admin callers for read-only tools', () async {
+      registry.setContext(const ToolContext(
+        senderUuid: 'regular-user',
+        isAdmin: false,
+        chatId: 'test-chat',
+      ));
+
+      // Read operations should succeed.
+      for (final entry in <String, Map<String, dynamic>>{
+        'get_chat_config': {'signal_group_id': 'g1'},
+        'get_user_mapping': {'signal_uuid': 'u1'},
+        'list_user_mappings': {},
+      }.entries) {
+        final result = await registry.executeTool(entry.key, entry.value);
+        final data = jsonDecode(result) as Map<String, dynamic>;
+        expect(data.containsKey('error'), isFalse,
+            reason: '${entry.key} should not require admin');
+      }
+    });
+  });
 }
