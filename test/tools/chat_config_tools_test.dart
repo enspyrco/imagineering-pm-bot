@@ -15,6 +15,12 @@ void main() {
     db = BotDatabase.inMemory();
     queries = Queries(db);
     registry = ToolRegistry();
+    // Set admin context so admin-gated tools pass.
+    registry.setContext(const ToolContext(
+      senderUuid: 'test-admin',
+      isAdmin: true,
+      chatId: 'test-chat',
+    ));
     registerChatConfigTools(registry, queries);
   });
 

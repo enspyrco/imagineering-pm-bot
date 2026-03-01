@@ -18,6 +18,11 @@ class SignalClient {
   final String phoneNumber;
   final http.Client _client;
 
+  /// Maps group `internal_id` (from envelopes) → `id` (for sending).
+  ///
+  /// Populated by [loadGroupMappings] on startup. Lazy-refreshed on cache miss.
+  final Map<String, String> _groupIdMap = {};
+
   static const _jsonHeaders = <String, String>{
     'Content-Type': 'application/json',
   };
@@ -38,17 +43,40 @@ class SignalClient {
     return list.cast<String>();
   }
 
+  /// Fetches groups and populates the `internal_id` → `id` mapping.
+  ///
+  /// Call once on startup. The mapping is refreshed lazily when [sendMessage]
+  /// encounters an unknown group.
+  Future<void> loadGroupMappings() async {
+    final groups = await listGroups();
+    for (final group in groups) {
+      _groupIdMap[group.internalId] = group.id;
+    }
+  }
+
   /// Sends a text message to a user or group. `POST /v2/send`
   ///
-  /// If [recipient] looks like a phone number (starts with '+') it is sent
-  /// as-is. Otherwise it is treated as a base64 group ID and prefixed with
-  /// `group.` for the signal-cli-rest-api.
+  /// If [recipient] starts with '+' it is treated as a phone number.
+  /// Otherwise it is treated as a group `internal_id` from an envelope and
+  /// resolved to the `id` the signal-cli-rest-api expects via the cached
+  /// group mapping (refreshed on cache miss).
   Future<SendMessageResponse> sendMessage({
     required String recipient,
     required String message,
   }) async {
-    final formattedRecipient =
-        recipient.startsWith('+') ? recipient : 'group.$recipient';
+    String formattedRecipient;
+    if (recipient.startsWith('+')) {
+      formattedRecipient = recipient;
+    } else {
+      // Resolve internal_id → id. Refresh mapping on cache miss.
+      var groupId = _groupIdMap[recipient];
+      if (groupId == null) {
+        await loadGroupMappings();
+        groupId = _groupIdMap[recipient];
+      }
+      formattedRecipient = groupId ?? 'group.$recipient';
+    }
+
     final body = <String, dynamic>{
       'message': message,
       'number': phoneNumber,

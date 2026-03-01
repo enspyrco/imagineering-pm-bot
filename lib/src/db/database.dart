@@ -1,12 +1,21 @@
 import 'package:sqlite3/sqlite3.dart';
 
+/// Current schema version. Bump this and add a migration block in
+/// [_runMigrations] whenever the schema changes.
+const schemaVersion = 1;
+
 /// SQLite database wrapper for Figment.
 ///
-/// Manages the connection and schema initialization. Use [BotDatabase.open]
-/// for file-based persistence or [BotDatabase.inMemory] for tests.
+/// Manages the connection, schema versioning, and migrations. Use
+/// [BotDatabase.open] for file-based persistence or [BotDatabase.inMemory]
+/// for tests.
+///
+/// Schema changes are tracked via a `schema_version` table. Each version
+/// maps to a migration block in [_runMigrations]. The `CREATE TABLE IF NOT
+/// EXISTS` guards mean re-running a migration on an existing DB is safe.
 class BotDatabase {
   BotDatabase._(this._db) {
-    _createSchema();
+    _initSchema();
   }
 
   /// Opens a file-backed SQLite database at [path], creating it if needed.
@@ -49,7 +58,49 @@ class BotDatabase {
     _db.dispose();
   }
 
-  void _createSchema() {
+  /// Returns the current schema version stored in the database, or 0 if the
+  /// version table doesn't exist yet.
+  int get currentSchemaVersion {
+    try {
+      final rows = _db.select('SELECT version FROM schema_version');
+      return rows.isEmpty ? 0 : rows.first['version'] as int;
+    } on SqliteException {
+      return 0;
+    }
+  }
+
+  void _initSchema() {
+    // Enable FK enforcement — without this, REFERENCES clauses are decorative.
+    _db.execute('PRAGMA foreign_keys = ON');
+
+    // Create the version tracking table.
+    _db.execute('''
+      CREATE TABLE IF NOT EXISTS schema_version (
+        version INTEGER NOT NULL
+      )
+    ''');
+
+    final current = currentSchemaVersion;
+    _runMigrations(current);
+  }
+
+  void _runMigrations(int fromVersion) {
+    if (fromVersion < 1) _migrateToV1();
+    // Future: if (fromVersion < 2) _migrateToV2();
+
+    _setVersion(schemaVersion);
+  }
+
+  void _setVersion(int version) {
+    _db.execute('DELETE FROM schema_version');
+    _db.execute(
+      'INSERT INTO schema_version (version) VALUES (?)',
+      [version],
+    );
+  }
+
+  /// Version 1: initial schema with all domain tables.
+  void _migrateToV1() {
     _db.execute('''
       CREATE TABLE IF NOT EXISTS conversations (
         chat_id    TEXT PRIMARY KEY,
@@ -80,7 +131,7 @@ class BotDatabase {
       ON messages(created_at)
     ''');
 
-    // --- Domain tables (Phase 2) ---
+    // --- Domain tables ---
 
     _db.execute('''
       CREATE TABLE IF NOT EXISTS signal_workspace_links (
@@ -180,7 +231,7 @@ class BotDatabase {
     _db.execute('''
       CREATE TABLE IF NOT EXISTS standup_responses (
         id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-        session_id          INTEGER NOT NULL,
+        session_id          INTEGER NOT NULL REFERENCES standup_sessions(id),
         signal_uuid         TEXT    NOT NULL,
         signal_display_name TEXT,
         yesterday           TEXT,

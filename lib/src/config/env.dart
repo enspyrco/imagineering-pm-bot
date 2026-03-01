@@ -13,6 +13,7 @@ class Env {
     this.radicaleBaseUrl,
     this.radicaleUsername,
     this.radicalePassword,
+    this.adminUuids = const [],
     this.botName = 'Figment',
     this.databasePath = './data/bot.db',
     this.logLevel = 'info',
@@ -43,6 +44,7 @@ class Env {
       radicaleBaseUrl: dotEnv['RADICALE_BASE_URL'],
       radicaleUsername: dotEnv['RADICALE_USERNAME'],
       radicalePassword: dotEnv['RADICALE_PASSWORD'],
+      adminUuids: _parseList(dotEnv['ADMIN_UUIDS']),
       botName: dotEnv['BOT_NAME'] ?? 'Figment',
       databasePath: dotEnv['DATABASE_PATH'] ?? './data/bot.db',
       logLevel: dotEnv['LOG_LEVEL'] ?? 'info',
@@ -60,6 +62,7 @@ class Env {
     String? radicaleBaseUrl,
     String? radicaleUsername,
     String? radicalePassword,
+    List<String> adminUuids = const [],
     String botName = 'Figment',
     String databasePath = './data/bot.db',
     String logLevel = 'info',
@@ -75,6 +78,7 @@ class Env {
         radicaleBaseUrl: radicaleBaseUrl,
         radicaleUsername: radicaleUsername,
         radicalePassword: radicalePassword,
+        adminUuids: adminUuids,
         botName: botName,
         databasePath: databasePath,
         logLevel: logLevel,
@@ -90,12 +94,24 @@ class Env {
   final String? radicaleBaseUrl;
   final String? radicaleUsername;
   final String? radicalePassword;
+  /// Signal UUIDs that have admin privileges (from `ADMIN_UUIDS` env var).
+  final List<String> adminUuids;
   final String botName;
   final String databasePath;
   final String logLevel;
+
+  /// Returns `true` if [signalUuid] is in the configured admin list.
+  bool isAdmin(String? signalUuid) =>
+      signalUuid != null && adminUuids.contains(signalUuid);
 
   bool get kanEnabled => kanApiKey != null && kanApiKey!.isNotEmpty;
   bool get outlineEnabled => outlineApiKey != null && outlineApiKey!.isNotEmpty;
   bool get radicaleEnabled =>
       radicalePassword != null && radicalePassword!.isNotEmpty;
+
+  /// Parses a comma-separated string into a trimmed list.
+  static List<String> _parseList(String? value) {
+    if (value == null || value.isEmpty) return const [];
+    return value.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+  }
 }

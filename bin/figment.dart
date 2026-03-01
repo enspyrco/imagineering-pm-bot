@@ -49,6 +49,8 @@ Future<void> main() async {
   try {
     final about = await signalClient.about();
     _log('Signal API connected: versions=${about.versions}');
+    await signalClient.loadGroupMappings();
+    _log('Group mappings loaded');
   } on Exception catch (e) {
     _log('Failed to connect to Signal API: $e', isError: true);
     exit(1);
@@ -150,15 +152,22 @@ Future<void> main() async {
         _log('${isGroup ? "[group] " : ""}Message from ${envelope.source}: $text');
 
         try {
+          final senderIsAdmin = env.isAdmin(envelope.sourceUuid);
+          toolRegistry.setContext(ToolContext(
+            senderUuid: envelope.sourceUuid,
+            isAdmin: senderIsAdmin,
+            chatId: envelope.chatId,
+          ));
           final input = AgentInput(
             text: text,
             chatId: envelope.chatId,
             senderUuid: envelope.sourceUuid,
-            isAdmin: false,
+            isAdmin: senderIsAdmin,
           );
           // Detect first contact: no workspace link for this group yet.
+          // Only applies to group chats — DMs never have workspace links.
           final isFirstContact =
-              queries.getWorkspaceLink(envelope.chatId) == null;
+              isGroup && queries.getWorkspaceLink(envelope.chatId) == null;
 
           final response = await agentLoop.processMessage(
             input,
@@ -192,6 +201,29 @@ Future<void> main() async {
       }
     } on Exception catch (e) {
       _log('Polling error: $e', isError: true);
+
+      // Auto-recover from signal-cli connection drops by restarting the
+      // Docker container and reloading group mappings.
+      if (e.toString().contains('Closed unexpectedly') ||
+          e.toString().contains('Connection terminated')) {
+        _log('Signal connection lost — restarting signal-api...');
+        try {
+          final result = await Process.run('docker', [
+            'compose',
+            '-f',
+            'docker-compose.dart.yml',
+            'restart',
+            'signal-api',
+          ]);
+          _log('signal-api restart: ${result.exitCode == 0 ? "OK" : "FAILED"}');
+          // Wait for the container to come back up.
+          await Future<void>.delayed(const Duration(seconds: 15));
+          await signalClient.loadGroupMappings();
+          _log('Reconnected and group mappings reloaded');
+        } on Exception catch (restartErr) {
+          _log('Failed to restart signal-api: $restartErr', isError: true);
+        }
+      }
     }
 
     history.evictStale();

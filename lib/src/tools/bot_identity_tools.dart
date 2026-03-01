@@ -55,6 +55,7 @@ CustomToolDef _getIdentityTool(Queries queries) {
 
 CustomToolDef _setIdentityTool(Queries queries) {
   return CustomToolDef(
+    requiresAdmin: true,
     name: 'set_bot_identity',
     description: 'Set the bot\'s identity. Admin-only — updates the name, '
         'pronouns, and communication tone. The new identity takes effect '

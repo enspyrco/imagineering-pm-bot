@@ -1,15 +1,15 @@
 /// Custom tools for chat configuration and user mapping.
 ///
-/// Chat config tools (admin-gated by convention):
+/// Chat config tools (admin-gated via `requiresAdmin`):
 /// - `get_chat_config`: Fetch workspace link and default board for a group.
-/// - `link_workspace`: Link a Signal group to a Kan workspace.
-/// - `unlink_workspace`: Remove the workspace link.
-/// - `set_default_board`: Set the default board/list for card creation.
+/// - `link_workspace`: Link a Signal group to a Kan workspace. (admin)
+/// - `unlink_workspace`: Remove the workspace link. (admin)
+/// - `set_default_board`: Set the default board/list for card creation. (admin)
 ///
-/// User mapping tools (admin-gated by convention):
+/// User mapping tools:
 /// - `get_user_mapping`: Look up a Signal UUID's Kan account.
-/// - `create_user_mapping`: Map a Signal user to a Kan email.
-/// - `remove_user_mapping`: Remove a user mapping.
+/// - `create_user_mapping`: Map a Signal user to a Kan email. (admin)
+/// - `remove_user_mapping`: Remove a user mapping. (admin)
 /// - `list_user_mappings`: List all Signal → Kan user mappings.
 library;
 
@@ -77,6 +77,7 @@ CustomToolDef _getChatConfigTool(Queries queries) {
 
 CustomToolDef _linkWorkspaceTool(Queries queries) {
   return CustomToolDef(
+    requiresAdmin: true,
     name: 'link_workspace',
     description: 'Link a Signal group to a Kan workspace. Admin-only. '
         'Only one workspace per group is allowed.',
@@ -137,6 +138,7 @@ CustomToolDef _linkWorkspaceTool(Queries queries) {
 
 CustomToolDef _unlinkWorkspaceTool(Queries queries) {
   return CustomToolDef(
+    requiresAdmin: true,
     name: 'unlink_workspace',
     description: 'Remove the workspace link for a Signal group. Admin-only.',
     inputSchema: const <String, dynamic>{
@@ -170,6 +172,7 @@ CustomToolDef _unlinkWorkspaceTool(Queries queries) {
 
 CustomToolDef _setDefaultBoardTool(Queries queries) {
   return CustomToolDef(
+    requiresAdmin: true,
     name: 'set_default_board',
     description: 'Set the default board and list for card creation in a Signal '
         'group. Admin-only. New cards created via natural language will '
@@ -263,6 +266,7 @@ CustomToolDef _getUserMappingTool(Queries queries) {
 
 CustomToolDef _createUserMappingTool(Queries queries) {
   return CustomToolDef(
+    requiresAdmin: true,
     name: 'create_user_mapping',
     description: 'Map a Signal user (UUID) to their Kan account email. '
         'Admin-only.',
@@ -319,6 +323,7 @@ CustomToolDef _createUserMappingTool(Queries queries) {
 
 CustomToolDef _removeUserMappingTool(Queries queries) {
   return CustomToolDef(
+    requiresAdmin: true,
     name: 'remove_user_mapping',
     description: 'Remove a Signal user\'s Kan account mapping. Admin-only.',
     inputSchema: const <String, dynamic>{
