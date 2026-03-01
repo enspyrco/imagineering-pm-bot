@@ -1,4 +1,4 @@
-/// Unified query facade for the Figment domain tables.
+/// Unified query facade for the Dreamfinder domain tables.
 ///
 /// All functions are synchronous (sqlite3 is sync). Domain logic is
 /// organized into mixins in `queries/` — this file composes them into

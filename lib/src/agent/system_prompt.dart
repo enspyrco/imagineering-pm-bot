@@ -8,15 +8,10 @@ import 'agent_loop.dart';
 ///
 /// When [identity] is provided, the bot's name, pronouns, and tone are
 /// sourced from the database. Otherwise, defaults are used.
-///
-/// When [isFirstContact] is `true`, extra instructions are injected telling
-/// the bot to introduce itself and offer identity customization (the "naming
-/// ceremony"). This is triggered when a group has no workspace link yet.
 String buildSystemPrompt(
   AgentInput input, {
   String botName = 'Dreamfinder',
   BotIdentityRecord? identity,
-  bool isFirstContact = false,
 }) {
   final name = identity?.name ?? botName;
   final pronouns = identity?.pronouns ?? 'they/them';
@@ -50,30 +45,6 @@ String buildSystemPrompt(
       'User is replying to a message'
           '${input.replyToName != null ? " from ${input.replyToName}" : ""}:',
       '> $truncated',
-      '',
-    ]);
-  }
-
-  if (isFirstContact) {
-    parts.addAll(<String>[
-      '## First Contact — Naming Ceremony',
-      '',
-      'This is your FIRST interaction with this group. You have not been '
-          'set up here yet. Respond with a warm, playful introduction:',
-      '',
-      '1. Greet the group with a spark of imagination (reference "one little '
-          'spark" from Journey Into Imagination, but keep it brief).',
-      '2. Introduce yourself: your name ($name), pronouns ($pronouns), '
-          'and what you can do (task management via Kan, knowledge base via '
-          'Outline, calendar via Radicale, standups).',
-      '3. Invite an admin to customize you:',
-      '   - "You can change my name, pronouns, or communication style '
-          'any time — just ask!"',
-      '   - Mention they can link this group to a Kan workspace to get started.',
-      '4. Keep the intro concise (under 200 words). Signal messages cannot '
-          'be edited, so get it right the first time.',
-      '',
-      'After the intro, respond to whatever the user actually asked.',
       '',
     ]);
   }
