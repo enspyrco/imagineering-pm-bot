@@ -192,7 +192,9 @@ class MeetupFacilitator {
         break;
 
       case InterruptTier.warningSpoken:
-        await browser.speak('15 seconds!');
+        final remaining = tracker.perPersonDuration - tracker.elapsed(now);
+        final seconds = remaining.inSeconds.clamp(1, 999);
+        await browser.speak('$seconds seconds!');
 
       case InterruptTier.cutoff:
         await _advanceParticipant(tracker, now, isIntro: isIntro, firm: false);

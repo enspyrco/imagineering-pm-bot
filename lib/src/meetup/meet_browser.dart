@@ -179,6 +179,9 @@ class PlaywrightMeetBrowser implements MeetBrowser {
         if (node.nodeType !== 1) continue;
         const speaker = node.querySelector('[class*="name"]')?.textContent || '';
         const text = node.textContent || '';
+        if (window.__dreamfinderCaptions.length >= 500) {
+          window.__dreamfinderCaptions.splice(0, 100);
+        }
         window.__dreamfinderCaptions.push({
           speaker: speaker.trim(),
           text: text.trim(),
