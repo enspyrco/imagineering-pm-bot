@@ -303,7 +303,7 @@ void main() {
       expect(browser.spokenTexts, hasLength(1));
     });
 
-    test('speaks 15-second warning for participant', () async {
+    test('speaks computed time warning for participant', () async {
       final t = DateTime(2026, 4, 25, 10, 0);
       final shortConfig = MeetupFacilitator(
         browser: browser,
@@ -318,12 +318,12 @@ void main() {
       await shortConfig.start(t);
       browser.spokenTexts.clear();
 
-      // Alice's 60s intro, 92% = 55.2s → tick at 56s.
+      // Alice's 60s intro, 92% = 55.2s → tick at 56s → 4s remaining.
       await shortConfig.tick(t.add(const Duration(seconds: 56)));
 
       expect(
         browser.spokenTexts,
-        contains(predicate<String>((s) => s.contains('15 seconds'))),
+        contains('4 seconds!'),
       );
     });
 
@@ -402,39 +402,13 @@ void main() {
       final t = DateTime(2026, 4, 25, 10, 0);
       await facilitator.start(t);
 
-      // Fast-forward through all phases to demos.
-      // intros(5) + sprint1(25) + break1(10) + sprint2(25) + break2(10)
-      // + sprint3(25) + break3(10) = 110 min → demos
+      // Fast-forward through all phases to demos (t+110min).
       final transitions = [5, 30, 40, 65, 75, 100, 110];
       for (final mins in transitions) {
         await facilitator.tick(t.add(Duration(minutes: mins)));
       }
-      browser.spokenTexts.clear();
 
-      // Now in demos — tick to let the demo tracker produce its first prompt.
-      // Actually, the demo announcement + first participant prompt should fire
-      // on the transition to demos phase.
-      // Let me check: the last tick at t+110 transitions to demos.
-      // So the announcement and prompt are already spoken.
-      // Let me re-check by looking at all spoken texts after the t+110 tick.
-
-      // Re-do: capture texts from the demos transition.
-      browser.spokenTexts.clear();
-      browser.calls.clear();
-
-      // Create a fresh facilitator for clarity.
-      browser.reset();
-      final fresh = MeetupFacilitator(
-        browser: browser,
-        config: config,
-      );
-      await fresh.start(t);
-
-      for (final mins in transitions) {
-        await fresh.tick(t.add(Duration(minutes: mins)));
-      }
-
-      // The transition to demos should have spoken the demos announcement
+      // The transition to demos should speak the demos announcement
       // AND the first participant prompt.
       final demosTexts = browser.spokenTexts.where(
         (s) => s.contains('Demo time') || s.contains('Alice'),
@@ -442,7 +416,7 @@ void main() {
       expect(demosTexts.length, greaterThanOrEqualTo(2));
     });
 
-    test('demo participant gets time warnings', () async {
+    test('demo participant gets computed time warning', () async {
       final t = DateTime(2026, 4, 25, 10, 0);
       await facilitator.start(t);
 
@@ -454,14 +428,11 @@ void main() {
       browser.spokenTexts.clear();
 
       // Demos started at t+110. Alice has 60s demo.
-      // 92% of 60s = 55.2s → tick at t+110min + 56s.
+      // 92% of 60s = 55.2s → tick at t+110min + 56s → 4s remaining.
       final demosStart = t.add(const Duration(minutes: 110));
       await facilitator.tick(demosStart.add(const Duration(seconds: 56)));
 
-      expect(
-        browser.spokenTexts.any((s) => s.contains('15 seconds')),
-        isTrue,
-      );
+      expect(browser.spokenTexts, contains('4 seconds!'));
     });
   });
 
