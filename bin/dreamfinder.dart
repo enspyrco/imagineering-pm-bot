@@ -190,7 +190,7 @@ Future<void> main() async {
   // Announce deploy if version changed — Dreamfinder reads its own changelog
   // and announces its reimagining in its own voice.
   final announceGroupId = env.deployAnnounceGroupId;
-  if (announceGroupId != null && appChangelog.isNotEmpty) {
+  if (announceGroupId != null && appChangelog.trim().isNotEmpty) {
     final announcer = DeployAnnouncer(
       queries: queries,
       composeViaAgent: (groupId, taskDescription) async {

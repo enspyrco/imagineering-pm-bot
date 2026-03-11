@@ -13,7 +13,7 @@ void main() {
 
   tearDown(() => db.close());
 
-  group('DeployQueries', () {
+  group('MetadataQueries', () {
     test('getMetadata returns null for missing key', () {
       expect(queries.getMetadata('nonexistent'), isNull);
     });

@@ -21,13 +21,16 @@ ARG BUILD_CHANGELOG=
 ARG BUILD_DIFF_STAT=
 
 # Generate version.dart with build metadata and changelog baked in.
-# Uses raw triple-quoted strings (r'''...''') for multi-line changelog content.
-RUN printf "/// Build version info — generated at Docker build time.\n" > lib/src/config/version.dart && \
+# Uses raw triple-quoted strings (r'''...'''). Sanitize inputs to prevent
+# triple-quote sequences in commit messages from breaking the Dart literal.
+RUN SAFE_CHANGELOG=$(printf '%s' "$BUILD_CHANGELOG" | sed "s/'''/'' '/g") && \
+    SAFE_DIFF_STAT=$(printf '%s' "$BUILD_DIFF_STAT" | sed "s/'''/'' '/g") && \
+    printf "/// Build version info — generated at Docker build time.\n" > lib/src/config/version.dart && \
     printf "const String appVersion = '%s+%s';\n" "$BUILD_VERSION" "$BUILD_SHA" >> lib/src/config/version.dart && \
     printf "const String appCommit = '%s';\n" "$BUILD_SHA" >> lib/src/config/version.dart && \
     printf "const String appBuildTime = '%s';\n" "$BUILD_TIME" >> lib/src/config/version.dart && \
-    printf "const String appChangelog = r'''\n%s\n''';\n" "$BUILD_CHANGELOG" >> lib/src/config/version.dart && \
-    printf "const String appDiffStat = r'''\n%s\n''';\n" "$BUILD_DIFF_STAT" >> lib/src/config/version.dart
+    printf "const String appChangelog = r'''\n%s\n''';\n" "$SAFE_CHANGELOG" >> lib/src/config/version.dart && \
+    printf "const String appDiffStat = r'''\n%s\n''';\n" "$SAFE_DIFF_STAT" >> lib/src/config/version.dart
 
 RUN dart compile exe bin/dreamfinder.dart -o bin/dreamfinder
 

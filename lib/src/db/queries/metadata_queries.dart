@@ -4,7 +4,7 @@ library;
 import '../database.dart';
 
 /// Mixin providing get/set access to the `bot_metadata` table.
-mixin DeployQueries {
+mixin MetadataQueries {
   /// The database handle. Provided by the mixing-in class.
   BotDatabase get db;
 
