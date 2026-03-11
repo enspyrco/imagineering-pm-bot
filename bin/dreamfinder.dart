@@ -9,6 +9,7 @@ import 'package:dreamfinder/src/agent/tool_registry.dart';
 import 'package:dreamfinder/src/bot/health_check.dart';
 import 'package:dreamfinder/src/bot/rate_limiter.dart';
 import 'package:dreamfinder/src/config/env.dart';
+import 'package:dreamfinder/src/config/version.dart';
 import 'package:dreamfinder/src/cron/scheduler.dart';
 import 'package:dreamfinder/src/db/database.dart';
 import 'package:dreamfinder/src/db/message_repository.dart';
@@ -20,7 +21,9 @@ import 'package:dreamfinder/src/tools/bot_identity_tools.dart';
 import 'package:dreamfinder/src/tools/chat_config_tools.dart';
 import 'package:dreamfinder/src/tools/standup_tools.dart';
 
-const _pollIntervalSeconds = 5;
+// Short backoff between poll cycles — the actual wait happens server-side
+// via long-polling in receiveMessages (10s timeout).
+const _pollIntervalSeconds = 1;
 
 Future<void> main() async {
   final env = Env.load();
@@ -29,14 +32,18 @@ Future<void> main() async {
     level: LogLevel.fromString(env.logLevel),
   );
 
-  log.info('Starting Dreamfinder...');
+  log.info('Starting Dreamfinder v$appVersion ($appCommit)');
   log.info('Config loaded', extra: {
     'bot': env.botName,
     'signal': env.signalApiUrl,
   });
 
   // Start health check server.
-  final health = HealthCheck();
+  final health = HealthCheck(
+    version: appVersion,
+    commit: appCommit,
+    buildTime: appBuildTime,
+  );
   final healthPort = await health.start(port: env.healthPort);
   log.info('Health check listening', extra: {'port': healthPort});
 
@@ -172,6 +179,10 @@ Future<void> main() async {
   // Wire up identity change callback so the cache stays warm.
   registerBotIdentityOnChanged(refreshBotName);
 
+  // Track chats where the bot spoke last, so the next message is treated as a
+  // continuation without requiring an explicit name mention.
+  final botSpokeLastIn = <String>{};
+
   log.info('Dreamfinder is running!', extra: {
     'poll_interval_seconds': _pollIntervalSeconds,
   });
@@ -187,14 +198,21 @@ Future<void> main() async {
         final text = envelope.dataMessage!.message!;
         final isGroup = envelope.isGroupMessage;
 
-        // In group chats, only respond when the bot name is mentioned as a
-        // whole word — prevents "Art" from matching "Start", etc.
+        // In group chats, respond when:
+        // 1. The bot name is mentioned (whole word), OR
+        // 2. The bot was the last speaker (conversation continuation).
         if (isGroup &&
+            !botSpokeLastIn.contains(envelope.chatId) &&
             !RegExp('\\b${RegExp.escape(cachedBotName)}\\b',
                     caseSensitive: false)
                 .hasMatch(text)) {
+          // Someone else spoke — bot is no longer the last speaker.
+          botSpokeLastIn.remove(envelope.chatId);
           continue;
         }
+        // Clear the flag — this message will be processed, so the next
+        // unaddressed message should not auto-trigger.
+        botSpokeLastIn.remove(envelope.chatId);
 
         // Rate limit check — prevents spam from a single user or group.
         if (!rateLimiter.shouldAllow(
@@ -249,6 +267,8 @@ Future<void> main() async {
               recipient: envelope.chatId,
               message: response,
             );
+            // Mark this chat so the next message is treated as a continuation.
+            if (isGroup) botSpokeLastIn.add(envelope.chatId);
             log.debug('Response sent');
           }
         } on Exception catch (e) {
