@@ -130,21 +130,27 @@ Future<void> main() async {
     anthropicClient = anthropic.AnthropicClient(apiKey: '');
     log.info('Auth mode: OAuth (Claude Max)');
   } else {
-    anthropicClient = anthropic.AnthropicClient(apiKey: env.anthropicApiKey);
+    anthropicClient = anthropic.AnthropicClient(apiKey: env.anthropicApiKey!);
     log.info('Auth mode: API key');
   }
+
+  // Track the last access token so we only recreate the client on refresh.
+  String? _lastOAuthToken;
 
   final agentLoop = AgentLoop(
     createMessage: (messages, tools, systemPrompt) async {
       if (oauthManager != null) {
         final token = await oauthManager.getAccessToken();
-        anthropicClient = anthropic.AnthropicClient(
-          apiKey: '',
-          headers: {
-            'Authorization': 'Bearer $token',
-            'anthropic-beta': 'oauth-2025-04-20',
-          },
-        );
+        if (token != _lastOAuthToken) {
+          _lastOAuthToken = token;
+          anthropicClient = anthropic.AnthropicClient(
+            apiKey: '',
+            headers: {
+              'Authorization': 'Bearer $token',
+              'anthropic-beta': 'oauth-2025-04-20',
+            },
+          );
+        }
       }
       return _callClaude(anthropicClient, messages, tools, systemPrompt);
     },

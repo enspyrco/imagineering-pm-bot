@@ -133,14 +133,12 @@ class OAuthTokenManager {
     try {
       response = await _httpClient.post(
         Uri.parse(_tokenUrl),
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
-        },
-        body: Uri(queryParameters: {
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: {
           'grant_type': 'refresh_token',
           'refresh_token': refreshToken,
           'client_id': _clientId,
-        }).query,
+        },
       );
     } on Exception catch (e) {
       final msg = 'OAuth token refresh network error: $e';
