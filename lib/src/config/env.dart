@@ -3,9 +3,10 @@ import 'package:dotenv/dotenv.dart';
 /// Application configuration loaded from environment variables and `.env` file.
 class Env {
   Env._({
-    required this.anthropicApiKey,
+    this.anthropicApiKey,
     required this.signalApiUrl,
     required this.signalPhoneNumber,
+    this.claudeRefreshToken,
     this.kanBaseUrl,
     this.kanApiKey,
     this.outlineBaseUrl,
@@ -24,8 +25,12 @@ class Env {
   factory Env.load() {
     final dotEnv = DotEnv(includePlatformEnvironment: true)..load();
     final anthropicApiKey = dotEnv['ANTHROPIC_API_KEY'];
-    if (anthropicApiKey == null || anthropicApiKey.isEmpty) {
-      throw StateError('ANTHROPIC_API_KEY is required');
+    final claudeRefreshToken = dotEnv['CLAUDE_REFRESH_TOKEN'];
+    if ((anthropicApiKey == null || anthropicApiKey.isEmpty) &&
+        (claudeRefreshToken == null || claudeRefreshToken.isEmpty)) {
+      throw StateError(
+        'Either ANTHROPIC_API_KEY or CLAUDE_REFRESH_TOKEN is required',
+      );
     }
     final signalApiUrl = dotEnv['SIGNAL_API_URL'];
     if (signalApiUrl == null || signalApiUrl.isEmpty) {
@@ -37,6 +42,7 @@ class Env {
     }
     return Env._(
       anthropicApiKey: anthropicApiKey,
+      claudeRefreshToken: claudeRefreshToken,
       signalApiUrl: signalApiUrl,
       signalPhoneNumber: signalPhoneNumber,
       kanBaseUrl: dotEnv['KAN_BASE_URL'],
@@ -56,7 +62,8 @@ class Env {
   }
 
   factory Env.forTesting({
-    String anthropicApiKey = 'test-key',
+    String? anthropicApiKey = 'test-key',
+    String? claudeRefreshToken,
     String signalApiUrl = 'http://localhost:8080',
     String signalPhoneNumber = '+1234567890',
     String? kanBaseUrl,
@@ -75,6 +82,7 @@ class Env {
   }) =>
       Env._(
         anthropicApiKey: anthropicApiKey,
+        claudeRefreshToken: claudeRefreshToken,
         signalApiUrl: signalApiUrl,
         signalPhoneNumber: signalPhoneNumber,
         kanBaseUrl: kanBaseUrl,
@@ -92,7 +100,16 @@ class Env {
         healthPort: healthPort,
       );
 
-  final String anthropicApiKey;
+  /// Anthropic API key. Null when using OAuth auth.
+  final String? anthropicApiKey;
+
+  /// Claude Max OAuth refresh token. If set, used instead of [anthropicApiKey].
+  final String? claudeRefreshToken;
+
+  /// Whether OAuth auth is configured (vs API key auth).
+  bool get useOAuth =>
+      claudeRefreshToken != null && claudeRefreshToken!.isNotEmpty;
+
   final String signalApiUrl;
   final String signalPhoneNumber;
   final String? kanBaseUrl;
