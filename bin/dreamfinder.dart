@@ -26,6 +26,7 @@ import 'package:dreamfinder/src/memory/memory_retriever.dart';
 import 'package:dreamfinder/src/signal/signal_client.dart';
 import 'package:dreamfinder/src/tools/bot_identity_tools.dart';
 import 'package:dreamfinder/src/tools/chat_config_tools.dart';
+import 'package:dreamfinder/src/tools/memory_tools.dart';
 import 'package:dreamfinder/src/tools/standup_tools.dart';
 
 // Short backoff between poll cycles — the actual wait happens server-side
@@ -118,6 +119,7 @@ Future<void> main() async {
   registerBotIdentityTools(toolRegistry, queries);
   registerChatConfigTools(toolRegistry, queries);
   registerStandupTools(toolRegistry, queries);
+  // Memory tools registered after pipeline creation below.
 
   final history = ConversationHistory(repository: messageRepo);
 
@@ -139,6 +141,8 @@ Future<void> main() async {
   } else {
     log.info('RAG memory system disabled (no VOYAGE_API_KEY)');
   }
+
+  registerMemoryTools(toolRegistry, embeddingPipeline);
 
   // Set up Anthropic client — OAuth (Claude Max) or API key.
   OAuthTokenManager? oauthManager;
@@ -331,12 +335,14 @@ Future<void> main() async {
             senderUuid: envelope.sourceUuid,
             isAdmin: senderIsAdmin,
             chatId: envelope.chatId,
+            isGroup: isGroup,
           ));
           final input = AgentInput(
             text: text,
             chatId: envelope.chatId,
             senderUuid: envelope.sourceUuid,
             isAdmin: senderIsAdmin,
+            isGroup: isGroup,
           );
 
           // Retrieve relevant long-term memories for context injection.

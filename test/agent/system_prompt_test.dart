@@ -105,6 +105,18 @@ void main() {
       expect(prompt, isNot(contains('Relevant Memories')));
     });
 
+    test('mentions save_memory in capabilities', () {
+      const input = AgentInput(
+        text: 'Hello',
+        chatId: 'group-1',
+        senderUuid: 'user-1',
+        isAdmin: false,
+      );
+      final prompt = buildSystemPrompt(input);
+      expect(prompt, contains('save_memory'));
+      expect(prompt, contains('long-term memory'));
+    });
+
     test('defaults isSystemInitiated to false', () {
       const input = AgentInput(
         text: 'Hello',
