@@ -159,18 +159,10 @@ class MemoryConsolidator {
       final embeddings = await _embeddingClient.embed([summaryText]);
       if (embeddings.isEmpty) return;
 
-      // Find the summary record without an embedding.
-      final rows = _queries.db.handle.select(
-        'SELECT id FROM memory_embeddings '
-        "WHERE chat_id = ? AND source_type = 'summary' AND embedding IS NULL "
-        'AND source_text = ? ORDER BY id DESC LIMIT 1',
-        [chatId, summaryText],
-      );
-      if (rows.isNotEmpty) {
-        _queries.updateMemoryEmbedding(
-          rows.first['id'] as int,
-          embeddings.first,
-        );
+      // Find the summary record without an embedding via the query mixin.
+      final recordId = _queries.findUnembeddedSummary(chatId, summaryText);
+      if (recordId != null) {
+        _queries.updateMemoryEmbedding(recordId, embeddings.first);
       }
     } on Exception catch (e) {
       developer.log(

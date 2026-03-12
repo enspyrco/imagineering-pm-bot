@@ -206,6 +206,21 @@ mixin MemoryQueries {
     }
   }
 
+  /// Finds the most recent summary embedding record for [chatId] that has
+  /// no embedding vector yet, matching [sourceText]. Returns its ID, or null.
+  ///
+  /// Used by [MemoryConsolidator] to backfill embeddings after summarization.
+  int? findUnembeddedSummary(String chatId, String sourceText) {
+    final rows = db.handle.select(
+      'SELECT id FROM memory_embeddings '
+      "WHERE chat_id = ? AND source_type = 'summary' AND embedding IS NULL "
+      'AND source_text = ? ORDER BY id DESC LIMIT 1',
+      [chatId, sourceText],
+    );
+    if (rows.isEmpty) return null;
+    return rows.first['id'] as int;
+  }
+
   // ---------------------------------------------------------------------------
   // Consolidation state
   // ---------------------------------------------------------------------------

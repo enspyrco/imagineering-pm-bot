@@ -129,15 +129,16 @@ Future<void> main() async {
   EmbeddingPipeline? embeddingPipeline;
   MemoryRetriever? memoryRetriever;
   MemoryConsolidator? memoryConsolidator;
+  EmbeddingClient? voyageClient;
 
   if (env.voyageEnabled) {
-    final embeddingClient = VoyageEmbeddingClient(apiKey: env.voyageApiKey!);
+    voyageClient = VoyageEmbeddingClient(apiKey: env.voyageApiKey!);
     embeddingPipeline = EmbeddingPipeline(
-      client: embeddingClient,
+      client: voyageClient,
       queries: queries,
     );
     memoryRetriever = MemoryRetriever(
-      client: embeddingClient,
+      client: voyageClient,
       loadMemories: (chatId) => queries.getVisibleMemories(chatId),
     );
     // Consolidator will be fully wired after the Anthropic client is created
@@ -194,8 +195,7 @@ Future<void> main() async {
   );
 
   // Wire up memory consolidator now that the Anthropic client exists.
-  if (env.voyageEnabled) {
-    final embeddingClient = VoyageEmbeddingClient(apiKey: env.voyageApiKey!);
+  if (env.voyageEnabled && voyageClient != null) {
     final summarizer = SummarizationClient(
       createSummarization: (prompt) async {
         // Refresh OAuth token if needed (same pattern as agent loop).
@@ -237,7 +237,7 @@ Future<void> main() async {
     memoryConsolidator = MemoryConsolidator(
       queries: queries,
       summarizer: summarizer,
-      embeddingClient: embeddingClient,
+      embeddingClient: voyageClient,
     );
     log.info('Memory consolidator enabled');
   }
