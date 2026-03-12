@@ -12,11 +12,12 @@ API, no message editing, no inline keyboards, and stricter rate limiting.
 
 **Status**: Active sprint — end-to-end bot is runnable. Signal client, agent loop,
 conversation history (DB-backed), tool registry, MCP manager, system prompt, SQLite
-persistence (10 domain tables), and custom tools (identity + chat config) are
-implemented with 106+ tests. Cron scheduler, standup orchestration, and dedicated
-message handler are next. Speed is a primary concern. Prefer working code over perfect
-abstractions. Skip plan mode for straightforward tasks, minimize over-engineering, and
-keep momentum high. Still respect correctness and type safety, but bias toward shipping.
+persistence (13 domain tables), custom tools (identity + chat config), standup
+orchestration, deploy announcements, OAuth auth, and RAG-based long-term memory are
+implemented with 349+ tests. Speed is a primary concern. Prefer working code over
+perfect abstractions. Skip plan mode for straightforward tasks, minimize
+over-engineering, and keep momentum high. Still respect correctness and type safety,
+but bias toward shipping.
 
 ## Tech Stack
 
@@ -40,11 +41,12 @@ lib/
     signal/         # Signal client, message models
     agent/          # Agent loop, system prompt, tool registry, conversation history
     mcp/            # MCP subprocess manager
+    memory/         # RAG long-term memory (embedding client, pipeline, retriever)
     config/         # Environment config
-    tools/          # Custom tool definitions (identity, chat config)
-    db/             # SQLite database, schema, queries, message repository
-    cron/           # Scheduled jobs (not yet built)
-    bot/            # Message handler, rate limiting (not yet built)
+    tools/          # Custom tool definitions (identity, chat config, standup)
+    db/             # SQLite database, schema, queries (10 mixins), message repository
+    cron/           # Scheduled jobs (standup orchestration)
+    bot/            # Message handler, rate limiting, health check, deploy announcer
 bin/                # Entry point (dreamfinder.dart)
 test/               # Tests mirroring lib/src/ structure
 data/               # SQLite database (gitignored)
@@ -66,6 +68,7 @@ dart compile exe bin/dreamfinder.dart # Compile for production
 
 ```bash
 ANTHROPIC_API_KEY=            # Claude API key
+CLAUDE_REFRESH_TOKEN=         # OAuth refresh token (alternative to API key)
 SIGNAL_PHONE_NUMBER=          # Bot's registered Signal phone number
 SIGNAL_API_URL=               # signal-cli-rest-api base URL
 KAN_BASE_URL=                 # Kan.bn instance URL
@@ -75,6 +78,7 @@ OUTLINE_API_KEY=              # Outline API key
 RADICALE_BASE_URL=            # Radicale CalDAV/CardDAV server URL
 RADICALE_USERNAME=            # Radicale auth username
 RADICALE_PASSWORD=            # Radicale auth password
+VOYAGE_API_KEY=               # Voyage AI key for RAG memory embeddings (optional)
 BOT_NAME=                     # Display name (default: "Dreamfinder")
 DATABASE_PATH=                # SQLite path (default: ./data/bot.db)
 LOG_LEVEL=                    # Logging level (default: info)
@@ -123,8 +127,8 @@ LOG_LEVEL=                    # Logging level (default: info)
 
 - SQLite via the `sqlite3` package (synchronous API). No ORM — raw SQL with
   parameterized queries in `Queries` class and `MessageRepository`.
-- Schema defined in `database.dart` via `CREATE TABLE IF NOT EXISTS`. No formal
-  migration system yet — add one before the first schema change on production data.
+- Schema defined in `database.dart` with versioned migrations (`_migrateToV1()` through
+  `_migrateToV4()`). Version tracked in `schema_version` table. Current: v4.
 - Never store secrets or API keys in SQLite.
 
 ## Git & Workflow

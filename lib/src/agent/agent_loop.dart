@@ -1,6 +1,7 @@
 import 'dart:developer' as developer;
 
 import '../memory/embedding_pipeline.dart';
+import '../memory/memory_record.dart';
 import 'conversation_history.dart';
 import 'tool_registry.dart';
 
@@ -68,6 +69,7 @@ class AgentInput {
     required this.senderUuid,
     this.senderName,
     required this.isAdmin,
+    this.isGroup = false,
     this.replyToText,
     this.replyToName,
     this.isSystemInitiated = false,
@@ -78,6 +80,13 @@ class AgentInput {
   final String senderUuid;
   final String? senderName;
   final bool isAdmin;
+
+  /// Whether this message originates from a group chat (vs a 1:1 DM).
+  ///
+  /// Used to derive automatic memory visibility:
+  /// - Group → `sameChat`, 1:1 admin → `crossChat`, 1:1 non-admin → `private`.
+  final bool isGroup;
+
   final String? replyToText;
   final String? replyToName;
 
@@ -289,12 +298,18 @@ class AgentLoop {
   /// since they're operational rather than semantic.
   void _queueEmbedding(AgentInput input, String assistantText) {
     if (_embeddingPipeline == null || input.isSystemInitiated) return;
+    final visibility = input.isGroup
+        ? MemoryVisibility.sameChat
+        : input.isAdmin
+            ? MemoryVisibility.crossChat
+            : MemoryVisibility.private_;
     _embeddingPipeline.queue(
       chatId: input.chatId,
       userText: input.text,
       assistantText: assistantText,
       senderUuid: input.senderUuid,
       senderName: input.senderName,
+      visibility: visibility,
     );
   }
 

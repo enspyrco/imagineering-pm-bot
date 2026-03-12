@@ -10,11 +10,13 @@ class ToolContext {
     required this.senderUuid,
     required this.isAdmin,
     required this.chatId,
+    this.isGroup = false,
   });
 
   final String? senderUuid;
   final bool isAdmin;
   final String chatId;
+  final bool isGroup;
 }
 
 /// A custom (non-MCP) tool definition with its handler function.
@@ -58,6 +60,11 @@ class ToolRegistry {
 
   /// Current per-request context. Set via [setContext] before each message.
   ToolContext? _context;
+
+  /// Public read access to the current per-request context.
+  ///
+  /// Used by tools that need sender/chat metadata (e.g., `save_memory`).
+  ToolContext? get context => _context;
 
   void registerCustomTool(CustomToolDef tool) {
     _customTools[tool.name] = tool;
