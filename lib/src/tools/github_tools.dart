@@ -123,7 +123,7 @@ CustomToolDef _readRepoFileTool(
       final res = await _ghFetch(
         client,
         token,
-        '/repos/$repo/contents/${Uri.encodeComponent(path)}?ref=$ref',
+        '/repos/$repo/contents/$path?ref=$ref',
       );
 
       if (res.statusCode == 404) {
@@ -199,7 +199,7 @@ CustomToolDef _listRepoFilesTool(
       final ref = args['ref'] as String? ?? defaultBranch;
 
       final apiPath = path.isNotEmpty
-          ? '/repos/$repo/contents/${Uri.encodeComponent(path)}?ref=$ref'
+          ? '/repos/$repo/contents/$path?ref=$ref'
           : '/repos/$repo/contents?ref=$ref';
 
       final res = await _ghFetch(client, token, apiPath);
