@@ -41,9 +41,10 @@ enum KickstartStep {
 
 /// Manages kickstart state for group chats via the `bot_metadata` table.
 ///
-/// Each group's kickstart state is stored as a JSON blob under the key
-/// `kickstart::<groupId>`. The state tracks the current step number and
-/// when the kickstart was started.
+/// Uses a dual-key lookup so DMs can be correlated back to the originating
+/// group:
+/// - `kickstart::<groupId>` → `{step, startedAt, adminUuid}`
+/// - `kickstart-dm::<adminUuid>` → `{groupId}` (reverse lookup)
 class KickstartState {
   KickstartState({required this.queries});
 
@@ -51,6 +52,9 @@ class KickstartState {
 
   /// Returns the metadata key for a given group.
   static String _key(String groupId) => 'kickstart::$groupId';
+
+  /// Returns the reverse-lookup key for an admin's DM.
+  static String _dmKey(String adminUuid) => 'kickstart-dm::$adminUuid';
 
   /// Returns the active kickstart step for [groupId], or `null` if no
   /// kickstart is in progress.
@@ -71,17 +75,46 @@ class KickstartState {
 
   /// Starts a new kickstart for [groupId] at step 1 (Workspace Setup).
   ///
+  /// The [adminUuid] is stored so DMs from this admin can be routed back to
+  /// the correct group's kickstart flow.
+  ///
   /// If a kickstart is already active, this is a no-op and returns `false`.
   /// Returns `true` if the kickstart was started.
-  bool startKickstart(String groupId) {
+  bool startKickstart(String groupId, {required String adminUuid}) {
     if (isKickstartActive(groupId)) return false;
 
     final payload = jsonEncode(<String, dynamic>{
       'step': KickstartStep.workspace.number,
       'startedAt': DateTime.now().toUtc().toIso8601String(),
+      'adminUuid': adminUuid,
     });
     queries.setMetadata(_key(groupId), payload);
+
+    // Reverse-lookup key so DMs can find the group.
+    final dmPayload = jsonEncode(<String, dynamic>{'groupId': groupId});
+    queries.setMetadata(_dmKey(adminUuid), dmPayload);
+
     return true;
+  }
+
+  /// Returns the group ID and current step for an admin's active kickstart,
+  /// or `null` if this admin has no active kickstart.
+  ///
+  /// Used by the message loop to detect DMs from admins mid-kickstart.
+  ({String groupId, KickstartStep step})? getKickstartForAdmin(
+    String adminUuid,
+  ) {
+    final dmJson = queries.getMetadata(_dmKey(adminUuid));
+    if (dmJson == null) return null;
+
+    final dmMap = jsonDecode(dmJson) as Map<String, dynamic>;
+    final groupId = dmMap['groupId'] as String?;
+    if (groupId == null) return null;
+
+    final step = getActiveKickstart(groupId);
+    if (step == null) return null;
+
+    return (groupId: groupId, step: step);
   }
 
   /// Advances the kickstart for [groupId] to the next step.
@@ -106,11 +139,27 @@ class KickstartState {
   }
 
   /// Marks the kickstart for [groupId] as complete by removing the state.
+  ///
+  /// Clears both the group key and the admin's DM reverse-lookup key.
   void completeKickstart(String groupId) {
-    // Remove the metadata key — no active kickstart means it's done.
-    // We use setMetadata with a sentinel value, then delete it.
-    // Actually, MetadataQueries doesn't have a delete — store a completed
-    // marker that getActiveKickstart ignores.
+    // Read the adminUuid before clearing so we can remove the DM key.
+    final json = queries.getMetadata(_key(groupId));
+    if (json != null) {
+      final map = jsonDecode(json) as Map<String, dynamic>;
+      final adminUuid = map['adminUuid'] as String?;
+      if (adminUuid != null) {
+        // Clear the reverse-lookup key. MetadataQueries has no delete, so
+        // store a completed marker that getKickstartForAdmin ignores (the
+        // group key's step will be null → getActiveKickstart returns null).
+        final dmPayload = jsonEncode(<String, dynamic>{
+          'groupId': groupId,
+          'completedAt': DateTime.now().toUtc().toIso8601String(),
+        });
+        queries.setMetadata(_dmKey(adminUuid), dmPayload);
+      }
+    }
+
+    // Store a completed marker that getActiveKickstart ignores.
     final payload = jsonEncode(<String, dynamic>{
       'step': null,
       'completedAt': DateTime.now().toUtc().toIso8601String(),

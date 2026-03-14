@@ -89,6 +89,22 @@ void main() {
       }
     });
 
+    test('header mentions DM-based setup', () {
+      final section = buildKickstartPromptSection(
+        KickstartStep.workspace,
+        groupId,
+      );
+      expect(section, contains('via DM'));
+    });
+
+    test('primer step mentions post_kickstart_summary', () {
+      final section = buildKickstartPromptSection(
+        KickstartStep.primer,
+        groupId,
+      );
+      expect(section, contains('post_kickstart_summary'));
+    });
+
     test('all non-primer steps mention skip/done advancement', () {
       for (final step in KickstartStep.values) {
         if (step == KickstartStep.primer) continue;

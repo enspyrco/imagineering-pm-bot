@@ -9,10 +9,22 @@ import 'dart:convert';
 import '../agent/tool_registry.dart';
 import '../kickstart/kickstart_state.dart';
 
+/// Callback type for sending a message to a Signal group.
+typedef SendGroupMessage = Future<void> Function(
+    String groupId, String message);
+
 /// Registers kickstart tools with the [ToolRegistry].
-void registerKickstartTools(ToolRegistry registry, KickstartState state) {
+///
+/// The [sendGroupMessage] callback is used by `post_kickstart_summary` to
+/// send the onboarding summary back to the group chat.
+void registerKickstartTools(
+  ToolRegistry registry,
+  KickstartState state, {
+  required SendGroupMessage sendGroupMessage,
+}) {
   registry.registerCustomTool(_advanceKickstartTool(state));
   registry.registerCustomTool(_completeKickstartTool(state));
+  registry.registerCustomTool(_postKickstartSummaryTool(sendGroupMessage));
 }
 
 CustomToolDef _advanceKickstartTool(KickstartState state) {
@@ -74,8 +86,48 @@ CustomToolDef _completeKickstartTool(KickstartState state) {
 
       return jsonEncode(<String, dynamic>{
         'success': true,
-        'message': 'Kickstart complete! The group is fully onboarded.',
+        'message': 'Kickstart complete! Now compose a summary of what was '
+            'set up and call post_kickstart_summary to announce it to the group.',
       });
+    },
+  );
+}
+
+CustomToolDef _postKickstartSummaryTool(SendGroupMessage sendGroupMessage) {
+  return CustomToolDef(
+    name: 'post_kickstart_summary',
+    description: 'Post a kickstart onboarding summary to the group chat. '
+        'Call this after complete_kickstart to announce what was set up.',
+    inputSchema: const <String, dynamic>{
+      'type': 'object',
+      'properties': <String, dynamic>{
+        'signal_group_id': <String, dynamic>{
+          'type': 'string',
+          'description': 'The Signal group ID to post the summary to.',
+        },
+        'summary': <String, dynamic>{
+          'type': 'string',
+          'description': 'The onboarding summary message to post.',
+        },
+      },
+      'required': <String>['signal_group_id', 'summary'],
+    },
+    handler: (args) async {
+      final groupId = args['signal_group_id'] as String;
+      final summary = args['summary'] as String;
+
+      try {
+        await sendGroupMessage(groupId, summary);
+        return jsonEncode(<String, dynamic>{
+          'success': true,
+          'message': 'Summary posted to group.',
+        });
+      } on Exception catch (e) {
+        return jsonEncode(<String, dynamic>{
+          'success': false,
+          'error': 'Failed to post summary: $e',
+        });
+      }
     },
   );
 }
