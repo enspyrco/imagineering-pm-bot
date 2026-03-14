@@ -467,7 +467,7 @@ Future<void> main() async {
               : <CalendarEvent>[];
 
           // Detect kickstart triggers — admin + group + trigger phrase.
-          // Redirect to DMs: ack in group, send opening DM, skip agent loop.
+          // Redirect to DMs: ack in group, run agent loop for opening DM.
           if (isGroup &&
               senderIsAdmin &&
               isKickstartMessage(text) &&
@@ -485,14 +485,36 @@ Future<void> main() async {
               recipient: envelope.chatId,
               message: "I'll DM you to walk through setup! ✨",
             );
-            // Opening DM to admin.
-            await signalClient.sendMessage(
-              recipient: envelope.sourceUuid,
-              message: "Let's get your team set up! We'll start with "
-                  'linking your workspace. What Kan workspace should '
-                  'this group use?',
+            // Opening DM — let the agent loop generate the first message
+            // using the kickstart prompt so it stays in sync with Step 1.
+            final dmInput = AgentInput(
+              text: 'Starting kickstart setup.',
+              chatId: envelope.sourceUuid,
+              senderUuid: envelope.sourceUuid,
+              isAdmin: true,
             );
-            continue; // Skip normal agent loop for this message.
+            final dmPrompt = _buildFullSystemPrompt(
+              input: dmInput,
+              env: env,
+              queries: queries,
+              memories: <MemorySearchResult>[],
+              events: <CalendarEvent>[],
+              kickstartState: kickstartState,
+              chatId: envelope.sourceUuid,
+              senderUuid: envelope.sourceUuid,
+              isGroup: false,
+            );
+            final dmResponse = await agentLoop.processMessage(
+              dmInput,
+              systemPrompt: dmPrompt,
+            );
+            if (dmResponse.isNotEmpty) {
+              await signalClient.sendMessage(
+                recipient: envelope.sourceUuid,
+                message: dmResponse,
+              );
+            }
+            continue; // Skip normal agent loop for the group message.
           }
 
           // Build system prompt — append kickstart section if active.
