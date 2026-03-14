@@ -14,7 +14,8 @@ import 'kickstart_state.dart';
 /// tools to use and how to detect when to advance.
 String buildKickstartPromptSection(KickstartStep step, String groupId) {
   final header = '\n## Kickstart — Step ${step.number} of 5: ${step.label}\n\n'
-      'You are guiding this group through initial setup. '
+      'You are guiding this admin through setup via DM. '
+      'The group\'s `signal_group_id` is `$groupId` — use it for all tool calls. '
       'This is a guided conversation — ask questions, use tools, '
       'and advance when the step is complete.\n\n';
 
@@ -25,7 +26,9 @@ String buildKickstartPromptSection(KickstartStep step, String groupId) {
 
   final completeNote = '\n\n**Completing**: When you finish the primer, call the '
       '`complete_kickstart` tool with `signal_group_id` set to `$groupId` '
-      'to mark onboarding as done.\n';
+      'to mark onboarding as done. Then compose a summary of everything that '
+      'was set up and call `post_kickstart_summary` with `signal_group_id` '
+      'set to `$groupId` and the summary text to announce it to the group.\n';
 
   final body = switch (step) {
     KickstartStep.workspace => _workspacePrompt(groupId),
@@ -110,4 +113,4 @@ String _primerPrompt(String groupId) => '''
 3. Invite the team to say goodnight when they're ready for their first dream.
 4. Call `complete_kickstart` to finish onboarding.
 
-**Tools**: `complete_kickstart`''';
+**Tools**: `complete_kickstart`, `post_kickstart_summary`''';

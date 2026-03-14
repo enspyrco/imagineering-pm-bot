@@ -142,7 +142,12 @@ Future<void> main() async {
   registerChatConfigTools(toolRegistry, queries);
   registerStandupTools(toolRegistry, queries);
   final kickstartState = KickstartState(queries: queries);
-  registerKickstartTools(toolRegistry, kickstartState);
+  registerKickstartTools(
+    toolRegistry,
+    kickstartState,
+    sendGroupMessage: (groupId, message) =>
+        signalClient.sendMessage(recipient: groupId, message: message),
+  );
   // Memory tools registered after pipeline creation below.
 
   final history = ConversationHistory(repository: messageRepo);
@@ -462,16 +467,32 @@ Future<void> main() async {
               : <CalendarEvent>[];
 
           // Detect kickstart triggers — admin + group + trigger phrase.
-          // Start before building the system prompt so the kickstart
-          // section is included on the very first response.
+          // Redirect to DMs: ack in group, send opening DM, skip agent loop.
           if (isGroup &&
               senderIsAdmin &&
               isKickstartMessage(text) &&
               !kickstartState.isKickstartActive(envelope.chatId)) {
-            kickstartState.startKickstart(envelope.chatId);
-            log.info('Kickstart started', extra: {
+            kickstartState.startKickstart(
+              envelope.chatId,
+              adminUuid: envelope.sourceUuid,
+            );
+            log.info('Kickstart started (DM flow)', extra: {
               'group': envelope.chatId,
+              'admin': envelope.sourceUuid,
             });
+            // Group acknowledgment.
+            await signalClient.sendMessage(
+              recipient: envelope.chatId,
+              message: "I'll DM you to walk through setup! ✨",
+            );
+            // Opening DM to admin.
+            await signalClient.sendMessage(
+              recipient: envelope.sourceUuid,
+              message: "Let's get your team set up! We'll start with "
+                  'linking your workspace. What Kan workspace should '
+                  'this group use?',
+            );
+            continue; // Skip normal agent loop for this message.
           }
 
           // Build system prompt — append kickstart section if active.
@@ -483,6 +504,7 @@ Future<void> main() async {
             events: events,
             kickstartState: kickstartState,
             chatId: envelope.chatId,
+            senderUuid: envelope.sourceUuid,
             isGroup: isGroup,
           );
 
@@ -714,7 +736,7 @@ Future<AgentResponse> _callClaude(
 }
 
 /// Builds the full system prompt, appending the kickstart section if a
-/// kickstart is active for this chat.
+/// kickstart is active for this chat (group) or sender (DM).
 String _buildFullSystemPrompt({
   required AgentInput input,
   required Env env,
@@ -723,6 +745,7 @@ String _buildFullSystemPrompt({
   required List<CalendarEvent> events,
   required KickstartState kickstartState,
   required String chatId,
+  required String senderUuid,
   required bool isGroup,
 }) {
   var prompt = buildSystemPrompt(
@@ -734,10 +757,21 @@ String _buildFullSystemPrompt({
     eventTimeZone: env.eventTimeZone,
   );
 
-  final kickstartStep =
-      isGroup ? kickstartState.getActiveKickstart(chatId) : null;
-  if (kickstartStep != null) {
-    prompt += buildKickstartPromptSection(kickstartStep, chatId);
+  // Kickstart prompt injection — check group key or DM reverse-lookup.
+  KickstartStep? kickstartStep;
+  String? kickstartGroupId;
+
+  if (isGroup) {
+    kickstartStep = kickstartState.getActiveKickstart(chatId);
+    kickstartGroupId = chatId;
+  } else {
+    final info = kickstartState.getKickstartForAdmin(senderUuid);
+    kickstartStep = info?.step;
+    kickstartGroupId = info?.groupId;
+  }
+
+  if (kickstartStep != null && kickstartGroupId != null) {
+    prompt += buildKickstartPromptSection(kickstartStep, kickstartGroupId);
   }
 
   return prompt;
