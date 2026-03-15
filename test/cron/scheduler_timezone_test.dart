@@ -19,7 +19,7 @@ void main() {
   group('Scheduler timezone support', () {
     test('fires prompt at configured hour in AEST timezone', () async {
       queries.upsertStandupConfig(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         promptHour: 9,
         timezone: 'Australia/Melbourne',
       );
@@ -44,7 +44,7 @@ void main() {
     test('does not fire when UTC hour matches but local hour does not',
         () async {
       queries.upsertStandupConfig(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         promptHour: 9,
         timezone: 'Australia/Melbourne',
       );
@@ -65,7 +65,7 @@ void main() {
 
     test('weekend check uses local timezone', () async {
       queries.upsertStandupConfig(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         promptHour: 9,
         timezone: 'Australia/Melbourne',
         skipWeekends: true,
@@ -89,7 +89,7 @@ void main() {
 
     test('date string uses local timezone for session dedup', () async {
       queries.upsertStandupConfig(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         promptHour: 9,
         timezone: 'Australia/Melbourne',
       );
@@ -120,7 +120,7 @@ void main() {
 
     test('handles US timezone correctly', () async {
       queries.upsertStandupConfig(
-        signalGroupId: 'group-us',
+        groupId: 'group-us',
         promptHour: 9,
         timezone: 'America/New_York',
       );
@@ -141,7 +141,7 @@ void main() {
 
     test('falls back to UTC for invalid timezone', () async {
       queries.upsertStandupConfig(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         promptHour: 9,
         timezone: 'Invalid/Timezone',
       );

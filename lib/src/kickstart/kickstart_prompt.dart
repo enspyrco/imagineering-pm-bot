@@ -20,20 +20,20 @@ String buildKickstartPromptSection(KickstartStep step, String groupId) {
   final header =
       '\n## Kickstart — Step ${step.number} of $total: ${step.label}\n\n'
       'You are guiding this user through setup via DM. '
-      'The group\'s `signal_group_id` is `$groupId` — use it for all tool calls. '
+      'The group\'s `group_id` is `$groupId` — use it for all tool calls. '
       'This is a guided conversation — ask questions, use tools, '
       'and advance when the step is complete.\n\n';
 
   final advanceNote = '\n\n**Advancing**: When this step is complete, call the '
-      '`advance_kickstart` tool with `signal_group_id` set to `$groupId`. '
+      '`advance_kickstart` tool with `group_id` set to `$groupId`. '
       'If the user says "skip", "next", or "done", treat the step as complete '
       'and advance.\n';
 
   final completeNote =
       '\n\n**Completing**: When you finish the primer, call the '
-      '`complete_kickstart` tool with `signal_group_id` set to `$groupId` '
+      '`complete_kickstart` tool with `group_id` set to `$groupId` '
       'to mark onboarding as done. Then compose a summary of everything that '
-      'was set up and call `post_kickstart_summary` with `signal_group_id` '
+      'was set up and call `post_kickstart_summary` with `group_id` '
       'set to `$groupId` and the summary text to announce it to the group.\n';
 
   final body = switch (step) {
@@ -54,7 +54,7 @@ String _workspacePrompt(String groupId) => '''
 **Goal**: Ensure this group has a linked Kan workspace and default board.
 
 **Steps**:
-1. Call `get_chat_config` with `signal_group_id` = `$groupId` to check if a workspace is already linked.
+1. Call `get_chat_config` with `group_id` = `$groupId` to check if a workspace is already linked.
 2. If no workspace is linked:
    - Call `kan_list_workspaces` to show available workspaces.
    - Ask the user which workspace to link.
@@ -102,12 +102,12 @@ Let the conversation flow naturally and collect details as they come up.
 **Tools**: `radicale_list_address_books`, `radicale_create_address_book`, `radicale_create_contact`, `radicale_update_contact`, `radicale_list_contacts`''';
 
 String _rosterPrompt(String groupId) => '''
-**Goal**: Map Signal users to Kan workspace members.
+**Goal**: Map users to Kan workspace members.
 
 **Steps**:
-1. Call `list_user_mappings` with `signal_group_id` = `$groupId` to see existing mappings.
+1. Call `list_user_mappings` with `group_id` = `$groupId` to see existing mappings.
 2. Ask the user about team members in this group:
-   - "Who's on the team? I can map Signal users to their Kan accounts."
+   - "Who's on the team? I can map users to their Kan accounts."
 3. For each team member the user mentions, use `set_user_mapping` to create the mapping.
 4. When the user says they're done (or says "done", "next", "skip"), advance.
 

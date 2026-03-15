@@ -22,7 +22,7 @@ import '../memory/memory_consolidator.dart';
 
 export '../db/schema.dart' show CalendarReminderWindow;
 
-/// Callback for sending a message to a Signal group.
+/// Callback for sending a message to a group chat.
 typedef SendMessageFn = Future<void> Function(String groupId, String message);
 
 /// Callback that routes a scheduled task through the agent loop so Claude
@@ -107,7 +107,7 @@ class Scheduler {
       // Check if it's prompt hour in the local timezone.
       if (localNow.hour == config.promptHour) {
         final existingSession =
-            queries.getActiveStandupSession(config.signalGroupId, today);
+            queries.getActiveStandupSession(config.groupId, today);
         if (existingSession == null) {
           await _sendStandupPrompt(config, today);
         }
@@ -149,7 +149,7 @@ class Scheduler {
     if (compose != null) {
       try {
         final composed = await compose(
-          config.signalGroupId,
+          config.groupId,
           'Send a standup prompt. Ask the team what they worked on yesterday, '
               "what they're working on today, and if they have any blockers. "
               "Tell them to reply naturally and you'll record their update.",
@@ -159,7 +159,7 @@ class Scheduler {
         }
       } on Exception catch (e) {
         developer.log(
-          'Agent composition failed for ${config.signalGroupId}, '
+          'Agent composition failed for ${config.groupId}, '
               'using hardcoded fallback: $e',
           name: 'Scheduler',
           level: 900,
@@ -167,10 +167,10 @@ class Scheduler {
       }
     }
 
-    await sendMessage(config.signalGroupId, message);
+    await sendMessage(config.groupId, message);
 
     queries.createStandupSession(
-      signalGroupId: config.signalGroupId,
+      groupId: config.groupId,
       date: date,
     );
   }

@@ -6,8 +6,8 @@ void main() {
     test('provides sensible defaults', () {
       final env = Env.forTesting();
       expect(env.anthropicApiKey, equals('test-key'));
-      expect(env.signalApiUrl, equals('http://localhost:8080'));
-      expect(env.signalPhoneNumber, equals('+1234567890'));
+      expect(env.matrixHomeserver, equals('https://matrix.test'));
+      expect(env.matrixAccessToken, equals('test-token'));
       expect(env.botName, equals('Dreamfinder'));
       expect(env.databasePath, equals('./data/bot.db'));
       expect(env.logLevel, equals('info'));
@@ -16,8 +16,11 @@ void main() {
     test('allows overriding all fields', () {
       final env = Env.forTesting(
         anthropicApiKey: 'custom-key',
-        signalApiUrl: 'http://custom:9090',
-        signalPhoneNumber: '+9876543210',
+        matrixHomeserver: 'https://matrix.custom',
+        matrixAccessToken: 'custom-token',
+        matrixUsername: 'bot',
+        matrixPassword: 'secret',
+        matrixIgnoreRooms: ['!ignore:server'],
         kanBaseUrl: 'http://kan',
         kanApiKey: 'kan-key',
         outlineBaseUrl: 'http://outline',
@@ -25,15 +28,18 @@ void main() {
         radicaleBaseUrl: 'http://radicale',
         radicaleUsername: 'user',
         radicalePassword: 'pass',
-        adminUuids: ['uuid-admin-1'],
+        adminIds: ['@admin:server'],
         botName: 'TestBot',
         databasePath: '/tmp/test.db',
         logLevel: 'debug',
       );
 
       expect(env.anthropicApiKey, equals('custom-key'));
-      expect(env.signalApiUrl, equals('http://custom:9090'));
-      expect(env.signalPhoneNumber, equals('+9876543210'));
+      expect(env.matrixHomeserver, equals('https://matrix.custom'));
+      expect(env.matrixAccessToken, equals('custom-token'));
+      expect(env.matrixUsername, equals('bot'));
+      expect(env.matrixPassword, equals('secret'));
+      expect(env.matrixIgnoreRooms, equals(['!ignore:server']));
       expect(env.kanBaseUrl, equals('http://kan'));
       expect(env.kanApiKey, equals('kan-key'));
       expect(env.outlineBaseUrl, equals('http://outline'));
@@ -41,7 +47,7 @@ void main() {
       expect(env.radicaleBaseUrl, equals('http://radicale'));
       expect(env.radicaleUsername, equals('user'));
       expect(env.radicalePassword, equals('pass'));
-      expect(env.adminUuids, equals(['uuid-admin-1']));
+      expect(env.adminIds, equals(['@admin:server']));
       expect(env.botName, equals('TestBot'));
       expect(env.databasePath, equals('/tmp/test.db'));
       expect(env.logLevel, equals('debug'));
@@ -106,17 +112,17 @@ void main() {
     });
 
     test('returns false for null uuid', () {
-      final env = Env.forTesting(adminUuids: ['uuid-admin']);
+      final env = Env.forTesting(adminIds: ['uuid-admin']);
       expect(env.isAdmin(null), isFalse);
     });
 
     test('returns false for non-admin uuid', () {
-      final env = Env.forTesting(adminUuids: ['uuid-admin']);
+      final env = Env.forTesting(adminIds: ['uuid-admin']);
       expect(env.isAdmin('uuid-regular'), isFalse);
     });
 
     test('returns true for admin uuid', () {
-      final env = Env.forTesting(adminUuids: ['uuid-admin-1', 'uuid-admin-2']);
+      final env = Env.forTesting(adminIds: ['uuid-admin-1', 'uuid-admin-2']);
       expect(env.isAdmin('uuid-admin-1'), isTrue);
       expect(env.isAdmin('uuid-admin-2'), isTrue);
     });

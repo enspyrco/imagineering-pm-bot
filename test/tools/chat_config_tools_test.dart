@@ -17,7 +17,7 @@ void main() {
     registry = ToolRegistry();
     // Set admin context so admin-gated tools pass.
     registry.setContext(const ToolContext(
-      senderUuid: 'test-admin',
+      senderId: 'test-admin',
       isAdmin: true,
       chatId: 'test-chat',
     ));
@@ -35,7 +35,7 @@ void main() {
   group('get_chat_config', () {
     test('returns nulls when nothing is configured', () async {
       final result = await registry.executeTool('get_chat_config', {
-        'signal_group_id': 'group-1',
+        'group_id': 'group-1',
       });
       final data = jsonDecode(result) as Map<String, dynamic>;
 
@@ -45,13 +45,13 @@ void main() {
 
     test('returns workspace and board when configured', () async {
       queries.createWorkspaceLink(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         workspacePublicId: 'ws-abc',
         workspaceName: 'Sprints',
         createdByUuid: 'admin-uuid',
       );
       queries.upsertDefaultBoardConfig(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         boardPublicId: 'board-1',
         boardName: 'Sprint Board',
         listPublicId: 'list-1',
@@ -59,7 +59,7 @@ void main() {
       );
 
       final result = await registry.executeTool('get_chat_config', {
-        'signal_group_id': 'group-1',
+        'group_id': 'group-1',
       });
       final data = jsonDecode(result) as Map<String, dynamic>;
 
@@ -75,7 +75,7 @@ void main() {
   group('link_workspace', () {
     test('links a workspace successfully', () async {
       final result = await registry.executeTool('link_workspace', {
-        'signal_group_id': 'group-1',
+        'group_id': 'group-1',
         'workspace_public_id': 'ws-abc',
         'workspace_name': 'Sprints',
         'created_by_uuid': 'admin-uuid',
@@ -93,14 +93,14 @@ void main() {
 
     test('rejects duplicate link', () async {
       await registry.executeTool('link_workspace', {
-        'signal_group_id': 'group-1',
+        'group_id': 'group-1',
         'workspace_public_id': 'ws-abc',
         'workspace_name': 'Sprints',
         'created_by_uuid': 'admin-uuid',
       });
 
       final result = await registry.executeTool('link_workspace', {
-        'signal_group_id': 'group-1',
+        'group_id': 'group-1',
         'workspace_public_id': 'ws-xyz',
         'workspace_name': 'Other',
         'created_by_uuid': 'admin-uuid',
@@ -115,14 +115,14 @@ void main() {
   group('unlink_workspace', () {
     test('unlinks successfully', () async {
       queries.createWorkspaceLink(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         workspacePublicId: 'ws-abc',
         workspaceName: 'Sprints',
         createdByUuid: 'admin-uuid',
       );
 
       final result = await registry.executeTool('unlink_workspace', {
-        'signal_group_id': 'group-1',
+        'group_id': 'group-1',
       });
       final data = jsonDecode(result) as Map<String, dynamic>;
 
@@ -133,7 +133,7 @@ void main() {
 
     test('returns error when no link exists', () async {
       final result = await registry.executeTool('unlink_workspace', {
-        'signal_group_id': 'group-1',
+        'group_id': 'group-1',
       });
       final data = jsonDecode(result) as Map<String, dynamic>;
 
@@ -145,7 +145,7 @@ void main() {
   group('set_default_board', () {
     test('sets default board config', () async {
       final result = await registry.executeTool('set_default_board', {
-        'signal_group_id': 'group-1',
+        'group_id': 'group-1',
         'board_public_id': 'board-1',
         'board_name': 'Sprint Board',
         'list_public_id': 'list-1',
@@ -162,7 +162,7 @@ void main() {
 
     test('updates existing config', () async {
       await registry.executeTool('set_default_board', {
-        'signal_group_id': 'group-1',
+        'group_id': 'group-1',
         'board_public_id': 'board-1',
         'board_name': 'Old Board',
         'list_public_id': 'list-1',
@@ -170,7 +170,7 @@ void main() {
       });
 
       await registry.executeTool('set_default_board', {
-        'signal_group_id': 'group-1',
+        'group_id': 'group-1',
         'board_public_id': 'board-2',
         'board_name': 'New Board',
         'list_public_id': 'list-2',
@@ -189,7 +189,7 @@ void main() {
   group('get_user_mapping', () {
     test('returns found=false when no mapping exists', () async {
       final result = await registry.executeTool('get_user_mapping', {
-        'signal_uuid': 'uuid-1',
+        'user_id': 'uuid-1',
       });
       final data = jsonDecode(result) as Map<String, dynamic>;
 
@@ -198,28 +198,28 @@ void main() {
 
     test('returns mapping when it exists', () async {
       queries.createUserLink(
-        signalUuid: 'uuid-1',
+        userId: 'uuid-1',
         kanUserEmail: 'alice@example.com',
-        signalDisplayName: 'Alice',
+        displayName: 'Alice',
       );
 
       final result = await registry.executeTool('get_user_mapping', {
-        'signal_uuid': 'uuid-1',
+        'user_id': 'uuid-1',
       });
       final data = jsonDecode(result) as Map<String, dynamic>;
 
       expect(data['found'], isTrue);
       expect(data['kan_user_email'], equals('alice@example.com'));
-      expect(data['signal_display_name'], equals('Alice'));
+      expect(data['display_name'], equals('Alice'));
     });
   });
 
   group('create_user_mapping', () {
     test('creates a mapping successfully', () async {
       final result = await registry.executeTool('create_user_mapping', {
-        'signal_uuid': 'uuid-1',
+        'user_id': 'uuid-1',
         'kan_user_email': 'alice@example.com',
-        'signal_display_name': 'Alice',
+        'display_name': 'Alice',
       });
       final data = jsonDecode(result) as Map<String, dynamic>;
 
@@ -229,12 +229,12 @@ void main() {
 
     test('rejects duplicate mapping', () async {
       queries.createUserLink(
-        signalUuid: 'uuid-1',
+        userId: 'uuid-1',
         kanUserEmail: 'alice@example.com',
       );
 
       final result = await registry.executeTool('create_user_mapping', {
-        'signal_uuid': 'uuid-1',
+        'user_id': 'uuid-1',
         'kan_user_email': 'other@example.com',
       });
       final data = jsonDecode(result) as Map<String, dynamic>;
@@ -247,12 +247,12 @@ void main() {
   group('remove_user_mapping', () {
     test('removes an existing mapping', () async {
       queries.createUserLink(
-        signalUuid: 'uuid-1',
+        userId: 'uuid-1',
         kanUserEmail: 'alice@example.com',
       );
 
       final result = await registry.executeTool('remove_user_mapping', {
-        'signal_uuid': 'uuid-1',
+        'user_id': 'uuid-1',
       });
       final data = jsonDecode(result) as Map<String, dynamic>;
 
@@ -263,7 +263,7 @@ void main() {
 
     test('returns error when no mapping exists', () async {
       final result = await registry.executeTool('remove_user_mapping', {
-        'signal_uuid': 'uuid-1',
+        'user_id': 'uuid-1',
       });
       final data = jsonDecode(result) as Map<String, dynamic>;
 
@@ -283,14 +283,14 @@ void main() {
 
     test('returns all mappings', () async {
       queries.createUserLink(
-        signalUuid: 'uuid-1',
+        userId: 'uuid-1',
         kanUserEmail: 'alice@example.com',
-        signalDisplayName: 'Alice',
+        displayName: 'Alice',
       );
       queries.createUserLink(
-        signalUuid: 'uuid-2',
+        userId: 'uuid-2',
         kanUserEmail: 'bob@example.com',
-        signalDisplayName: 'Bob',
+        displayName: 'Bob',
       );
 
       final result = await registry.executeTool('list_user_mappings', {});
@@ -312,7 +312,7 @@ void main() {
   group('admin enforcement', () {
     test('rejects non-admin callers for admin-gated tools', () async {
       registry.setContext(const ToolContext(
-        senderUuid: 'non-admin-user',
+        senderId: 'non-admin-user',
         isAdmin: false,
         chatId: 'test-chat',
       ));
@@ -326,7 +326,7 @@ void main() {
         'remove_user_mapping',
       ]) {
         final result = await registry.executeTool(toolName, {
-          'signal_group_id': 'g1',
+          'group_id': 'g1',
           'workspace_public_id': 'ws1',
           'workspace_name': 'Test',
           'created_by_uuid': 'admin',
@@ -334,7 +334,7 @@ void main() {
           'board_name': 'Board',
           'list_public_id': 'l1',
           'list_name': 'List',
-          'signal_uuid': 'u1',
+          'user_id': 'u1',
           'kan_user_email': 'x@x.com',
         });
         final data = jsonDecode(result) as Map<String, dynamic>;
@@ -345,15 +345,15 @@ void main() {
 
     test('allows non-admin callers for read-only tools', () async {
       registry.setContext(const ToolContext(
-        senderUuid: 'regular-user',
+        senderId: 'regular-user',
         isAdmin: false,
         chatId: 'test-chat',
       ));
 
       // Read operations should succeed.
       for (final entry in <String, Map<String, dynamic>>{
-        'get_chat_config': {'signal_group_id': 'g1'},
-        'get_user_mapping': {'signal_uuid': 'u1'},
+        'get_chat_config': {'group_id': 'g1'},
+        'get_user_mapping': {'user_id': 'u1'},
         'list_user_mappings': {},
       }.entries) {
         final result = await registry.executeTool(entry.key, entry.value);

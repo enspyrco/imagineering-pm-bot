@@ -13,13 +13,13 @@ mixin CalendarQueries {
   /// event/group/window.
   bool hasCalendarReminderBeenSent(
     String eventUid,
-    String signalGroupId,
+    String groupId,
     CalendarReminderWindow reminderWindow,
   ) {
     final rows = db.handle.select(
       'SELECT 1 FROM calendar_reminders '
-      'WHERE event_uid = ? AND signal_group_id = ? AND reminder_window = ?',
-      [eventUid, signalGroupId, reminderWindow.dbValue],
+      'WHERE event_uid = ? AND group_id = ? AND reminder_window = ?',
+      [eventUid, groupId, reminderWindow.dbValue],
     );
     return rows.isNotEmpty;
   }
@@ -27,14 +27,14 @@ mixin CalendarQueries {
   /// Records a calendar reminder as sent (idempotent).
   void recordCalendarReminder(
     String eventUid,
-    String signalGroupId,
+    String groupId,
     CalendarReminderWindow reminderWindow,
   ) {
     db.handle.execute(
       'INSERT OR IGNORE INTO calendar_reminders '
-      '(event_uid, signal_group_id, reminder_window, sent_at) '
+      '(event_uid, group_id, reminder_window, sent_at) '
       "VALUES (?, ?, ?, datetime('now'))",
-      [eventUid, signalGroupId, reminderWindow.dbValue],
+      [eventUid, groupId, reminderWindow.dbValue],
     );
   }
 

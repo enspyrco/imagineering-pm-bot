@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:anthropic_sdk_dart/anthropic_sdk_dart.dart' as anthropic;
 import 'package:timezone/data/latest.dart' as tzdata;
@@ -16,11 +17,16 @@ import 'package:dreamfinder/src/config/env.dart';
 import 'package:dreamfinder/src/config/oauth_client.dart';
 import 'package:dreamfinder/src/config/version.dart';
 import 'package:dreamfinder/src/cron/scheduler.dart';
-import 'package:dreamfinder/src/dream/dream_cycle.dart';
 import 'package:dreamfinder/src/db/database.dart';
 import 'package:dreamfinder/src/db/message_repository.dart';
 import 'package:dreamfinder/src/db/queries.dart';
+import 'package:dreamfinder/src/dream/dream_cycle.dart';
+import 'package:dreamfinder/src/kickstart/kickstart.dart';
+import 'package:dreamfinder/src/kickstart/kickstart_prompt.dart';
+import 'package:dreamfinder/src/kickstart/kickstart_state.dart';
 import 'package:dreamfinder/src/logging/logger.dart';
+import 'package:dreamfinder/src/matrix/matrix_auth.dart';
+import 'package:dreamfinder/src/matrix/matrix_client.dart';
 import 'package:dreamfinder/src/mcp/mcp_manager.dart';
 import 'package:dreamfinder/src/memory/embedding_backfill.dart';
 import 'package:dreamfinder/src/memory/embedding_client.dart';
@@ -29,20 +35,15 @@ import 'package:dreamfinder/src/memory/memory_consolidator.dart';
 import 'package:dreamfinder/src/memory/memory_record.dart';
 import 'package:dreamfinder/src/memory/memory_retriever.dart';
 import 'package:dreamfinder/src/memory/summarization_client.dart';
-import 'package:dreamfinder/src/signal/signal_client.dart';
 import 'package:dreamfinder/src/tools/bot_identity_tools.dart';
 import 'package:dreamfinder/src/tools/chat_config_tools.dart';
-import 'package:dreamfinder/src/tools/memory_tools.dart';
-import 'package:dreamfinder/src/kickstart/kickstart.dart';
-import 'package:dreamfinder/src/kickstart/kickstart_prompt.dart';
-import 'package:dreamfinder/src/kickstart/kickstart_state.dart';
 import 'package:dreamfinder/src/tools/github_tools.dart';
 import 'package:dreamfinder/src/tools/kickstart_tools.dart';
+import 'package:dreamfinder/src/tools/memory_tools.dart';
 import 'package:dreamfinder/src/tools/standup_tools.dart';
 
-// Short backoff between poll cycles — the actual wait happens server-side
-// via long-polling in receiveMessages (10s timeout).
-const _pollIntervalSeconds = 1;
+/// Maximum backoff for sync retry (30 seconds).
+const _maxBackoff = Duration(seconds: 30);
 
 Future<void> main() async {
   tzdata.initializeTimeZones();
@@ -55,7 +56,7 @@ Future<void> main() async {
   log.info('Starting Dreamfinder v$appVersion ($appCommit)');
   log.info('Config loaded', extra: {
     'bot': env.botName,
-    'signal': env.signalApiUrl,
+    'homeserver': env.matrixHomeserver,
   });
 
   // Start health check server.
@@ -77,18 +78,25 @@ Future<void> main() async {
   final messageRepo = MessageRepository(database);
   log.info('Database opened', extra: {'path': dbPath});
 
-  final signalClient = SignalClient(
-    baseUrl: env.signalApiUrl,
-    phoneNumber: env.signalPhoneNumber,
+  // Authenticate with Matrix homeserver.
+  final matrixAuth = MatrixAuth(
+    homeserver: env.matrixHomeserver,
+    accessToken: env.matrixAccessToken,
+    username: env.matrixUsername,
+    password: env.matrixPassword,
+  );
+  final matrixToken = await matrixAuth.getAccessToken();
+
+  final matrixClient = MatrixClient(
+    homeserver: env.matrixHomeserver,
+    accessToken: matrixToken,
   );
 
   try {
-    final about = await signalClient.about();
-    log.info('Signal API connected', extra: {'versions': about.versions});
-    await signalClient.loadGroupMappings();
-    log.info('Group mappings loaded');
+    final botUserId = await matrixClient.whoAmI();
+    log.info('Matrix connected', extra: {'user': botUserId});
   } on Exception catch (e) {
-    log.error('Failed to connect to Signal API: $e');
+    log.error('Failed to connect to Matrix: $e');
     exit(1);
   }
 
@@ -146,8 +154,8 @@ Future<void> main() async {
   registerKickstartTools(
     toolRegistry,
     kickstartState,
-    sendGroupMessage: (groupId, message) =>
-        signalClient.sendMessage(recipient: groupId, message: message),
+    sendGroupMessage: (roomId, message) =>
+        matrixClient.sendMessage(roomId: roomId, message: message),
   );
   registerGitHubTools(
     toolRegistry,
@@ -183,8 +191,6 @@ Future<void> main() async {
       queries: queries,
       client: voyageClient,
     );
-    // Consolidator will be fully wired after the Anthropic client is created
-    // (needs the summarization callback). Placeholder set below.
     log.info('RAG memory system enabled (Voyage AI)');
   } else {
     log.info('RAG memory system disabled (no VOYAGE_API_KEY)');
@@ -202,7 +208,6 @@ Future<void> main() async {
       log: BotLogger(name: 'OAuth', level: LogLevel.fromString(env.logLevel)),
       initialRefreshToken: env.claudeRefreshToken,
     );
-    // Create initial client with empty key — headers are set per-request.
     anthropicClient = anthropic.AnthropicClient(apiKey: '');
     log.info('Auth mode: OAuth (Claude Max)');
   } else {
@@ -211,6 +216,7 @@ Future<void> main() async {
   }
 
   // Track the last access token so we only recreate the client on refresh.
+  // ignore: no_leading_underscores_for_local_identifiers
   String? _lastOAuthToken;
 
   final agentLoop = AgentLoop(
@@ -232,7 +238,8 @@ Future<void> main() async {
     },
     toolRegistry: toolRegistry,
     history: history,
-    onTyping: (chatId) => signalClient.sendTypingIndicator(recipient: chatId),
+    onTyping: (chatId) =>
+        matrixClient.sendTypingIndicator(roomId: chatId),
     embeddingPipeline: embeddingPipeline,
   );
 
@@ -240,7 +247,6 @@ Future<void> main() async {
   if (env.voyageEnabled && voyageClient != null) {
     final summarizer = SummarizationClient(
       createSummarization: (prompt) async {
-        // Refresh OAuth token if needed (same pattern as agent loop).
         if (oauthManager != null) {
           final token = await oauthManager.getAccessToken();
           if (token != _lastOAuthToken) {
@@ -266,7 +272,6 @@ Future<void> main() async {
             ],
           ),
         );
-        // Extract text from response blocks.
         final buffer = StringBuffer();
         for (final block in response.content.blocks) {
           if (block is anthropic.TextBlock) {
@@ -284,6 +289,12 @@ Future<void> main() async {
     log.info('Memory consolidator enabled');
   }
 
+  /// Sends a message to a Matrix room (shared callback for scheduler,
+  /// dream cycle, deploy announcer, and kickstart tools).
+  Future<void> sendToRoom(String roomId, String message) async {
+    await matrixClient.sendMessage(roomId: roomId, message: message);
+  }
+
   final rateLimiter = RateLimiter();
 
   // Dream cycle orchestrator — triggered by "goodnight" messages.
@@ -292,8 +303,7 @@ Future<void> main() async {
     messageRepo: messageRepo,
     agentLoop: agentLoop,
     toolRegistry: toolRegistry,
-    sendMessage: (groupId, message) =>
-        signalClient.sendMessage(recipient: groupId, message: message),
+    sendMessage: sendToRoom,
     botName: env.botName,
     buildSystemPrompt: (input) => buildSystemPrompt(
       input,
@@ -304,15 +314,14 @@ Future<void> main() async {
 
   final scheduler = Scheduler(
     queries: queries,
-    sendMessage: (groupId, message) =>
-        signalClient.sendMessage(recipient: groupId, message: message),
+    sendMessage: sendToRoom,
     backfill: embeddingBackfill,
     consolidator: memoryConsolidator,
     composeViaAgent: (groupId, taskDescription) async {
       final input = AgentInput(
         text: taskDescription,
         chatId: groupId,
-        senderUuid: 'system',
+        senderId: 'system',
         isAdmin: true,
         isSystemInitiated: true,
       );
@@ -329,8 +338,7 @@ Future<void> main() async {
   scheduler.start();
   log.info('Scheduler started');
 
-  // Announce deploy if version changed — Dreamfinder reads its own changelog
-  // and announces its reimagining in its own voice.
+  // Announce deploy if version changed.
   final announceGroupId = env.deployAnnounceGroupId;
   if (announceGroupId != null && appChangelog.trim().isNotEmpty) {
     final announcer = DeployAnnouncer(
@@ -339,7 +347,7 @@ Future<void> main() async {
         final input = AgentInput(
           text: taskDescription,
           chatId: groupId,
-          senderUuid: 'system',
+          senderId: 'system',
           isAdmin: true,
           isSystemInitiated: true,
         );
@@ -352,8 +360,7 @@ Future<void> main() async {
           ),
         );
       },
-      sendMessage: (groupId, message) =>
-          signalClient.sendMessage(recipient: groupId, message: message),
+      sendMessage: sendToRoom,
       currentVersion: '$appVersion+$appCommit',
       changelog: appChangelog,
       diffStat: appDiffStat,
@@ -380,7 +387,6 @@ Future<void> main() async {
   ProcessSignal.sigterm.watch().listen((_) => shutdown());
 
   // Cache the bot name for mention detection — avoids a DB hit per message.
-  // Refreshed when `set_bot_identity` fires via the onIdentityChanged callback.
   var cachedBotName =
       (queries.getBotIdentity()?.name ?? env.botName).toLowerCase();
   void refreshBotName() {
@@ -389,83 +395,122 @@ Future<void> main() async {
     log.info('Bot name cache refreshed', extra: {'name': cachedBotName});
   }
 
-  // Wire up identity change callback so the cache stays warm.
   registerBotIdentityOnChanged(refreshBotName);
 
-  // Track chats where the bot spoke last, so the next message is treated as a
-  // continuation without requiring an explicit name mention.
   final continuation = GroupContinuation();
 
-  log.info('Dreamfinder is running!', extra: {
-    'poll_interval_seconds': _pollIntervalSeconds,
-  });
+  // Build the ignore set for rooms to skip.
+  final ignoreRooms = env.matrixIgnoreRooms.toSet();
 
+  // Retrieve the stored sync token for resumption across restarts.
+  var nextBatch = queries.getMetadata('matrix_next_batch');
+  if (nextBatch != null) {
+    log.info('Resuming sync', extra: {'since': nextBatch});
+  } else {
+    log.info('Initial sync — skipping old timeline events');
+  }
+
+  final botUserId = await matrixClient.whoAmI();
+  log.info('Dreamfinder is running!', extra: {'user': botUserId});
+
+  var backoff = const Duration(seconds: 1);
+
+  // ─── Matrix sync loop ──────────────────────────────────────────────────
   while (true) {
     try {
-      final envelopes = await signalClient.receiveMessages();
+      final sync = await matrixClient.sync(
+        since: nextBatch,
+        timeout: 30000,
+      );
       health.recordPoll();
+      backoff = const Duration(seconds: 1); // Reset on success.
 
-      for (final envelope in envelopes) {
-        if (!envelope.hasTextMessage) continue;
+      // Persist sync token for resumption.
+      nextBatch = sync.nextBatch;
+      queries.setMetadata('matrix_next_batch', nextBatch);
 
-        final text = envelope.dataMessage!.message!;
-        final isGroup = envelope.isGroupMessage;
+      // Auto-join on invite.
+      for (final invite in sync.invites) {
+        log.info('Invited to room', extra: {
+          'room': invite.roomId,
+          'by': invite.inviter,
+        });
+        try {
+          await matrixClient.joinRoom(invite.roomId);
+          log.info('Joined room', extra: {'room': invite.roomId});
+        } on Exception catch (e) {
+          log.warning('Failed to join room: $e', extra: {
+            'room': invite.roomId,
+          });
+        }
+      }
+
+      // Process timeline events.
+      for (final event in sync.events) {
+        if (!event.hasTextMessage) continue;
+        if (event.sender == botUserId) continue; // Ignore own messages.
+        if (ignoreRooms.contains(event.roomId)) continue;
+
+        final text = event.body!;
+        final isDm = matrixClient.isDm(event.roomId);
+        final isGroup = !isDm;
 
         // In group chats, respond when:
-        // 1. The bot name is mentioned (whole word), OR
+        // 1. The bot is mentioned (pill or name), OR
         // 2. The bot was the last speaker (conversation continuation).
         if (isGroup &&
-            !continuation.shouldContinue(chatId: envelope.chatId) &&
-            !RegExp('\\b${RegExp.escape(cachedBotName)}\\b',
-                    caseSensitive: false)
-                .hasMatch(text)) {
+            !continuation.shouldContinue(chatId: event.roomId) &&
+            !matrixClient.isMentioned(
+              text: text,
+              formattedBody: event.formattedBody,
+              botDisplayName: cachedBotName,
+            )) {
           continue;
         }
 
-        // Rate limit check — prevents spam from a single user or group.
+        // Rate limit check.
         if (!rateLimiter.shouldAllow(
-          chatId: envelope.chatId,
-          senderUuid: envelope.sourceUuid,
+          chatId: event.roomId,
+          senderId: event.sender,
+          isDm: isDm,
         )) {
           log.warning('Rate limited', extra: {
-            'sender': envelope.source,
-            'chatId': envelope.chatId,
+            'sender': event.sender,
+            'room': event.roomId,
           });
           continue;
         }
 
         log.info('Message received', extra: {
           'group': isGroup,
-          'sender': envelope.source,
-          'chatId': envelope.chatId,
+          'sender': event.sender,
+          'room': event.roomId,
         });
         log.debug('Message text', extra: {
           'text': text.length > 200 ? '${text.substring(0, 200)}...' : text,
         });
 
         try {
-          final senderIsAdmin = env.isAdmin(envelope.sourceUuid);
+          final senderIsAdmin = env.isAdmin(event.sender);
           toolRegistry.setContext(ToolContext(
-            senderUuid: envelope.sourceUuid,
+            senderId: event.sender,
             isAdmin: senderIsAdmin,
-            chatId: envelope.chatId,
+            chatId: event.roomId,
             isGroup: isGroup,
           ));
           final input = AgentInput(
             text: text,
-            chatId: envelope.chatId,
-            senderUuid: envelope.sourceUuid,
+            chatId: event.roomId,
+            senderId: event.sender,
             isAdmin: senderIsAdmin,
             isGroup: isGroup,
           );
 
           // Retrieve relevant long-term memories for context injection.
-          // Skip memories within the conversation history TTL — those are
-          // likely still in the sliding window and would waste tokens.
           final memories = memoryRetriever != null
               ? await memoryRetriever.retrieve(
                   text,
-                  envelope.chatId,
+                  event.roomId,
                   skipRecentMinutes: history.ttl.inMinutes,
                 )
               : <MemorySearchResult>[];
@@ -476,53 +521,25 @@ Future<void> main() async {
               : <CalendarEvent>[];
 
           // Detect kickstart triggers — any group member + trigger phrase.
-          // Redirect to DMs: ack in group, run agent loop for opening DM.
+          // Redirect to DMs: ack in group, then run agent loop in DM room.
           if (isGroup &&
               isKickstartMessage(text) &&
-              !kickstartState.isKickstartActive(envelope.chatId)) {
+              !kickstartState.isKickstartActive(event.roomId)) {
             kickstartState.startKickstart(
-              envelope.chatId,
-              initiatorUuid: envelope.sourceUuid,
+              event.roomId,
+              initiatorUuid: event.sender,
             );
             log.info('Kickstart started (DM flow)', extra: {
-              'group': envelope.chatId,
-              'sender': envelope.sourceUuid,
+              'room': event.roomId,
+              'sender': event.sender,
             });
-            // Group acknowledgment.
-            await signalClient.sendMessage(
-              recipient: envelope.chatId,
+            await matrixClient.sendMessage(
+              roomId: event.roomId,
               message: "I'll DM you to walk through setup! ✨",
             );
-            // Opening DM — let the agent loop generate the first message
-            // using the kickstart prompt so it stays in sync with Step 1.
-            final dmInput = AgentInput(
-              text: 'Starting kickstart setup.',
-              chatId: envelope.sourceUuid,
-              senderUuid: envelope.sourceUuid,
-              isAdmin: true,
-            );
-            final dmPrompt = _buildFullSystemPrompt(
-              input: dmInput,
-              env: env,
-              queries: queries,
-              memories: <MemorySearchResult>[],
-              events: <CalendarEvent>[],
-              kickstartState: kickstartState,
-              chatId: envelope.sourceUuid,
-              senderUuid: envelope.sourceUuid,
-              isGroup: false,
-            );
-            final dmResponse = await agentLoop.processMessage(
-              dmInput,
-              systemPrompt: dmPrompt,
-            );
-            if (dmResponse.isNotEmpty) {
-              await signalClient.sendMessage(
-                recipient: envelope.sourceUuid,
-                message: dmResponse,
-              );
-            }
-            continue; // Skip normal agent loop for the group message.
+            // For Matrix, DM kickstart messages arrive naturally via sync
+            // from the DM room — no need to proactively send a DM.
+            continue;
           }
 
           // Build system prompt — append kickstart section if active.
@@ -533,8 +550,8 @@ Future<void> main() async {
             memories: memories,
             events: events,
             kickstartState: kickstartState,
-            chatId: envelope.chatId,
-            senderUuid: envelope.sourceUuid,
+            chatId: event.roomId,
+            senderId: event.sender,
             isGroup: isGroup,
           );
 
@@ -546,16 +563,15 @@ Future<void> main() async {
 
           if (response.isNotEmpty) {
             log.info('Responding', extra: {
-              'chatId': envelope.chatId,
+              'room': event.roomId,
               'length': response.length,
             });
-            await signalClient.sendMessage(
-              recipient: envelope.chatId,
+            await matrixClient.sendMessage(
+              roomId: event.roomId,
               message: response,
             );
-            // Mark this chat so the next message is treated as a continuation.
             if (isGroup) {
-              continuation.recordBotResponse(chatId: envelope.chatId);
+              continuation.recordBotResponse(chatId: event.roomId);
             }
             log.debug('Response sent');
 
@@ -564,13 +580,13 @@ Future<void> main() async {
               final today =
                   DateTime.now().toUtc().toIso8601String().split('T').first;
               final started = dreamCycle.trigger(
-                groupId: envelope.chatId,
-                triggeredByUuid: envelope.sourceUuid,
+                groupId: event.roomId,
+                triggeredByUuid: event.sender,
                 date: today,
               );
               if (started) {
                 log.info('Dream cycle triggered', extra: {
-                  'group': envelope.chatId,
+                  'room': event.roomId,
                   'date': today,
                 });
               }
@@ -579,23 +595,22 @@ Future<void> main() async {
         } on Exception catch (e) {
           health.recordError();
           log.error('Error processing message: $e', extra: {
-            'chatId': envelope.chatId,
+            'room': event.roomId,
           });
 
-          // Self-heal: if Claude rejects due to malformed history (orphaned
-          // tool_result blocks), clear that chat's history and retry once.
+          // Self-heal: clear corrupt conversation history.
           if (e.toString().contains('tool_use_id') ||
               e.toString().contains('tool_result')) {
             log.warning('Clearing corrupt history', extra: {
-              'chatId': envelope.chatId,
+              'room': event.roomId,
             });
-            history.clearHistory(envelope.chatId);
-            messageRepo.deleteConversation(envelope.chatId);
+            history.clearHistory(event.roomId);
+            messageRepo.deleteConversation(event.roomId);
           }
 
           try {
-            await signalClient.sendMessage(
-              recipient: envelope.chatId,
+            await matrixClient.sendMessage(
+              roomId: event.roomId,
               message: 'Something went wrong. Please try again.',
             );
           } on Exception catch (sendErr) {
@@ -605,54 +620,20 @@ Future<void> main() async {
       }
     } on Exception catch (e) {
       health.recordError();
-      log.error('Polling error: $e');
+      log.error('Sync error: $e');
 
-      // Auto-recover from signal-cli connection drops by restarting the
-      // Docker container and reloading group mappings.
-      if (e.toString().contains('Closed unexpectedly') ||
-          e.toString().contains('Connection terminated')) {
-        log.warning('Signal connection lost — restarting signal-api...');
-        try {
-          final result = await Process.run('docker', [
-            'compose',
-            '-f',
-            'docker-compose.dart.yml',
-            'restart',
-            'signal-api',
-          ]);
-          log.info('signal-api restart', extra: {
-            'success': result.exitCode == 0,
-          });
-          // Wait for the container to come back up with a health check loop.
-          var connected = false;
-          for (var attempt = 0; attempt < 10; attempt++) {
-            await Future<void>.delayed(const Duration(seconds: 3));
-            try {
-              await signalClient.about();
-              connected = true;
-              break;
-            } on Exception {
-              log.info('Waiting for signal-api...', extra: {
-                'attempt': attempt + 1,
-              });
-            }
-          }
-          if (connected) {
-            await signalClient.loadGroupMappings();
-            log.info('Reconnected and group mappings reloaded');
-          } else {
-            log.error('signal-api failed to come back up after 30s');
-          }
-        } on Exception catch (restartErr) {
-          log.error('Failed to restart signal-api: $restartErr');
-        }
-      }
+      // Exponential backoff on sync failure (1s → 2s → 4s → ... → 30s).
+      await Future<void>.delayed(backoff);
+      backoff = Duration(
+        milliseconds: min(backoff.inMilliseconds * 2, _maxBackoff.inMilliseconds),
+      );
+      continue;
     }
 
     history.evictStale();
     rateLimiter.evictStale();
     continuation.evictStale();
-    await Future<void>.delayed(const Duration(seconds: _pollIntervalSeconds));
+    // No delay needed — Matrix sync long-polls server-side.
   }
 }
 
@@ -678,8 +659,6 @@ Future<AgentResponse> _callClaude(
           content: anthropic.MessageContent.text(content),
         ));
       } else if (content is Map<String, dynamic>) {
-        // Reconstruct proper Block content from the agent loop's Map format
-        // which contains textBlocks and toolUseBlocks.
         final blocks = <anthropic.Block>[];
         final textList = content['textBlocks'] as List<dynamic>? ?? [];
         for (final t in textList) {
@@ -775,7 +754,7 @@ String _buildFullSystemPrompt({
   required List<CalendarEvent> events,
   required KickstartState kickstartState,
   required String chatId,
-  required String senderUuid,
+  required String senderId,
   required bool isGroup,
 }) {
   var prompt = buildSystemPrompt(
@@ -795,7 +774,7 @@ String _buildFullSystemPrompt({
     kickstartStep = kickstartState.getActiveKickstart(chatId);
     kickstartGroupId = chatId;
   } else {
-    final info = kickstartState.getKickstartForUser(senderUuid);
+    final info = kickstartState.getKickstartForUser(senderId);
     kickstartStep = info?.step;
     kickstartGroupId = info?.groupId;
   }

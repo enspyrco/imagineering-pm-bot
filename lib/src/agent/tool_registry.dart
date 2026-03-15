@@ -7,13 +7,13 @@ import '../mcp/mcp_manager.dart';
 /// Allows tool handlers to check admin status without changing their signature.
 class ToolContext {
   const ToolContext({
-    required this.senderUuid,
+    required this.senderId,
     required this.isAdmin,
     required this.chatId,
     this.isGroup = false,
   });
 
-  final String? senderUuid;
+  final String? senderId;
   final bool isAdmin;
   final String chatId;
   final bool isGroup;

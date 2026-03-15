@@ -9,25 +9,25 @@ mixin DreamQueries {
   /// The database handle. Provided by the mixing-in class.
   BotDatabase get db;
 
-  /// Returns the dream cycle for [signalGroupId] on [date], or `null`.
-  DreamCycleRecord? getDreamCycle(String signalGroupId, String date) {
+  /// Returns the dream cycle for [groupId] on [date], or `null`.
+  DreamCycleRecord? getDreamCycle(String groupId, String date) {
     final rows = db.handle.select(
       'SELECT * FROM dream_cycles '
-      'WHERE signal_group_id = ? AND date = ?',
-      [signalGroupId, date],
+      'WHERE group_id = ? AND date = ?',
+      [groupId, date],
     );
     if (rows.isEmpty) return null;
     return _dreamCycleFromRow(rows.first);
   }
 
-  /// Returns the most recently completed dream cycle for [signalGroupId],
+  /// Returns the most recently completed dream cycle for [groupId],
   /// or `null` if no cycle has ever completed.
-  DreamCycleRecord? getLastCompletedDreamCycle(String signalGroupId) {
+  DreamCycleRecord? getLastCompletedDreamCycle(String groupId) {
     final rows = db.handle.select(
       'SELECT * FROM dream_cycles '
-      "WHERE signal_group_id = ? AND status = 'completed' "
+      "WHERE group_id = ? AND status = 'completed' "
       'ORDER BY started_at DESC LIMIT 1',
-      [signalGroupId],
+      [groupId],
     );
     if (rows.isEmpty) return null;
     return _dreamCycleFromRow(rows.first);
@@ -35,15 +35,15 @@ mixin DreamQueries {
 
   /// Creates a new dream cycle row. Returns the row ID.
   int createDreamCycle({
-    required String signalGroupId,
+    required String groupId,
     required String date,
     required String triggeredByUuid,
   }) {
     db.handle.execute(
       'INSERT INTO dream_cycles '
-      '(signal_group_id, date, triggered_by_uuid) '
+      '(group_id, date, triggered_by_uuid) '
       'VALUES (?, ?, ?)',
-      [signalGroupId, date, triggeredByUuid],
+      [groupId, date, triggeredByUuid],
     );
     return db.handle.lastInsertRowId;
   }
@@ -83,7 +83,7 @@ mixin DreamQueries {
   DreamCycleRecord _dreamCycleFromRow(Map<String, Object?> row) {
     return DreamCycleRecord(
       id: row['id']! as int,
-      signalGroupId: row['signal_group_id']! as String,
+      groupId: row['group_id']! as String,
       date: row['date']! as String,
       status: DreamCycleStatus.fromDb(row['status']! as String),
       triggeredByUuid: row['triggered_by_uuid']! as String,

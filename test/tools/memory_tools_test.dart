@@ -16,7 +16,7 @@ void main() {
     registry = ToolRegistry();
     pipeline = FakePipeline();
     registry.setContext(const ToolContext(
-      senderUuid: 'user-1',
+      senderId: 'user-1',
       isAdmin: false,
       chatId: 'chat-1',
       isGroup: false,
@@ -35,7 +35,7 @@ void main() {
       expect(pipeline.calls, hasLength(1));
       expect(pipeline.calls.first.visibility, MemoryVisibility.sameChat);
       expect(pipeline.calls.first.chatId, 'chat-1');
-      expect(pipeline.calls.first.senderUuid, 'user-1');
+      expect(pipeline.calls.first.senderId, 'user-1');
     });
 
     test('saves with explicit cross_chat visibility', () async {
@@ -65,7 +65,7 @@ void main() {
     test('returns error when pipeline is null', () async {
       final noMemRegistry = ToolRegistry();
       noMemRegistry.setContext(const ToolContext(
-        senderUuid: 'user-1',
+        senderId: 'user-1',
         isAdmin: false,
         chatId: 'chat-1',
         isGroup: false,
@@ -148,7 +148,7 @@ void main() {
         ),
       ]);
       searchRegistry.setContext(const ToolContext(
-        senderUuid: 'user-1',
+        senderId: 'user-1',
         isAdmin: false,
         chatId: 'chat-1',
         isGroup: true,
@@ -178,7 +178,7 @@ void main() {
     test('returns error when retriever is null', () async {
       final noRetrieverRegistry = ToolRegistry();
       noRetrieverRegistry.setContext(const ToolContext(
-        senderUuid: 'user-1',
+        senderId: 'user-1',
         isAdmin: false,
         chatId: 'chat-1',
         isGroup: false,
@@ -235,7 +235,7 @@ void main() {
       final emptyRetriever = FakeRetriever(results: []);
       final emptyRegistry = ToolRegistry();
       emptyRegistry.setContext(const ToolContext(
-        senderUuid: 'user-1',
+        senderId: 'user-1',
         isAdmin: false,
         chatId: 'chat-1',
         isGroup: false,

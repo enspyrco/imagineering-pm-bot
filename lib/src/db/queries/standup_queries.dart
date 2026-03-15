@@ -13,11 +13,11 @@ mixin StandupQueries {
   // Standup Config
   // -------------------------------------------------------------------------
 
-  /// Returns the standup config for [signalGroupId], or `null`.
-  StandupConfigRecord? getStandupConfig(String signalGroupId) {
+  /// Returns the standup config for [groupId], or `null`.
+  StandupConfigRecord? getStandupConfig(String groupId) {
     final rows = db.handle.select(
-      'SELECT * FROM standup_config WHERE signal_group_id = ?',
-      [signalGroupId],
+      'SELECT * FROM standup_config WHERE group_id = ?',
+      [groupId],
     );
     if (rows.isEmpty) return null;
     return _standupConfigFromRow(rows.first);
@@ -29,7 +29,7 @@ mixin StandupQueries {
   /// On update, only modifies fields that are explicitly provided —
   /// omitted fields retain their existing values.
   void upsertStandupConfig({
-    required String signalGroupId,
+    required String groupId,
     bool? enabled,
     int? promptHour,
     int? summaryHour,
@@ -38,17 +38,17 @@ mixin StandupQueries {
     bool? skipWeekends,
     int? nudgeHour,
   }) {
-    final existing = getStandupConfig(signalGroupId);
+    final existing = getStandupConfig(groupId);
 
     if (existing == null) {
       // First time — insert with provided values or defaults.
       db.handle.execute(
         'INSERT INTO standup_config '
-        '(signal_group_id, enabled, prompt_hour, summary_hour, timezone, '
+        '(group_id, enabled, prompt_hour, summary_hour, timezone, '
         'skip_break_days, skip_weekends, nudge_hour) '
         'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         [
-          signalGroupId,
+          groupId,
           (enabled ?? true) ? 1 : 0,
           promptHour ?? 9,
           summaryHour ?? 17,
@@ -96,10 +96,10 @@ mixin StandupQueries {
 
     if (sets.isEmpty) return;
 
-    params.add(signalGroupId);
+    params.add(groupId);
     db.handle.execute(
       'UPDATE standup_config SET ${sets.join(', ')} '
-      'WHERE signal_group_id = ?',
+      'WHERE group_id = ?',
       params,
     );
   }
@@ -114,12 +114,12 @@ mixin StandupQueries {
   // Standup Sessions
   // -------------------------------------------------------------------------
 
-  /// Returns the standup session for [signalGroupId] on [date], or `null`.
-  StandupSession? getActiveStandupSession(String signalGroupId, String date) {
+  /// Returns the standup session for [groupId] on [date], or `null`.
+  StandupSession? getActiveStandupSession(String groupId, String date) {
     final rows = db.handle.select(
       'SELECT * FROM standup_sessions '
-      'WHERE signal_group_id = ? AND date = ?',
-      [signalGroupId, date],
+      'WHERE group_id = ? AND date = ?',
+      [groupId, date],
     );
     if (rows.isEmpty) return null;
     return _standupSessionFromRow(rows.first);
@@ -127,16 +127,16 @@ mixin StandupQueries {
 
   /// Creates a new standup session.
   void createStandupSession({
-    required String signalGroupId,
+    required String groupId,
     required String date,
     String? promptMessageId,
     StandupSessionStatus status = StandupSessionStatus.active,
   }) {
     db.handle.execute(
       'INSERT INTO standup_sessions '
-      '(signal_group_id, date, prompt_message_id, status) '
+      '(group_id, date, prompt_message_id, status) '
       'VALUES (?, ?, ?, ?)',
-      [signalGroupId, date, promptMessageId, status.dbValue],
+      [groupId, date, promptMessageId, status.dbValue],
     );
   }
 
@@ -184,8 +184,8 @@ mixin StandupQueries {
   /// Inserts or updates a standup response for a session/user.
   void upsertStandupResponse({
     required int sessionId,
-    required String signalUuid,
-    String? signalDisplayName,
+    required String userId,
+    String? displayName,
     String? yesterday,
     String? today,
     String? blockers,
@@ -193,19 +193,19 @@ mixin StandupQueries {
   }) {
     db.handle.execute(
       'INSERT INTO standup_responses '
-      '(session_id, signal_uuid, signal_display_name, '
+      '(session_id, user_id, display_name, '
       'yesterday, today, blockers, raw_message) '
       'VALUES (?, ?, ?, ?, ?, ?, ?) '
-      'ON CONFLICT(session_id, signal_uuid) DO UPDATE SET '
-      'signal_display_name = excluded.signal_display_name, '
+      'ON CONFLICT(session_id, user_id) DO UPDATE SET '
+      'display_name = excluded.display_name, '
       'yesterday = excluded.yesterday, '
       'today = excluded.today, '
       'blockers = excluded.blockers, '
       'raw_message = excluded.raw_message',
       [
         sessionId,
-        signalUuid,
-        signalDisplayName,
+        userId,
+        displayName,
         yesterday,
         today,
         blockers,
@@ -230,7 +230,7 @@ mixin StandupQueries {
   StandupConfigRecord _standupConfigFromRow(Map<String, Object?> row) {
     return StandupConfigRecord(
       id: row['id']! as int,
-      signalGroupId: row['signal_group_id']! as String,
+      groupId: row['group_id']! as String,
       enabled: row['enabled']! as int == 1,
       promptHour: row['prompt_hour']! as int,
       summaryHour: row['summary_hour']! as int,
@@ -244,7 +244,7 @@ mixin StandupQueries {
   StandupSession _standupSessionFromRow(Map<String, Object?> row) {
     return StandupSession(
       id: row['id']! as int,
-      signalGroupId: row['signal_group_id']! as String,
+      groupId: row['group_id']! as String,
       date: row['date']! as String,
       promptMessageId: row['prompt_message_id'] as String?,
       summaryMessageId: row['summary_message_id'] as String?,
@@ -257,8 +257,8 @@ mixin StandupQueries {
     return StandupResponse(
       id: row['id']! as int,
       sessionId: row['session_id']! as int,
-      signalUuid: row['signal_uuid']! as String,
-      signalDisplayName: row['signal_display_name'] as String?,
+      userId: row['user_id']! as String,
+      displayName: row['display_name'] as String?,
       yesterday: row['yesterday'] as String?,
       today: row['today'] as String?,
       blockers: row['blockers'] as String?,

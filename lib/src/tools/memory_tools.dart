@@ -79,7 +79,7 @@ CustomToolDef _saveMemoryTool(
         chatId: ctx?.chatId ?? 'unknown',
         userText: '[Explicit save] $content',
         assistantText: '(saved to memory)',
-        senderUuid: ctx?.senderUuid,
+        senderId: ctx?.senderId,
         visibility: visibility,
       );
 

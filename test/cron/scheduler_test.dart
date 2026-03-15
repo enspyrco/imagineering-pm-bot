@@ -42,7 +42,7 @@ void main() {
   group('Scheduler standup prompts', () {
     test('sends prompt at configured hour', () async {
       queries.upsertStandupConfig(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         promptHour: 9,
       );
 
@@ -64,7 +64,7 @@ void main() {
 
     test('does not send prompt if already sent today', () async {
       queries.upsertStandupConfig(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         promptHour: 9,
       );
 
@@ -87,7 +87,7 @@ void main() {
 
     test('skips disabled groups', () async {
       queries.upsertStandupConfig(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         enabled: false,
       );
 
@@ -105,7 +105,7 @@ void main() {
 
     test('skips weekends when configured', () async {
       queries.upsertStandupConfig(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         promptHour: 9,
         skipWeekends: true,
       );
@@ -127,7 +127,7 @@ void main() {
   group('Scheduler agent composition', () {
     test('uses composeViaAgent when provided', () async {
       queries.upsertStandupConfig(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         promptHour: 9,
       );
 
@@ -153,7 +153,7 @@ void main() {
     test('falls back to hardcoded message when composeViaAgent throws',
         () async {
       queries.upsertStandupConfig(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         promptHour: 9,
       );
 
@@ -181,7 +181,7 @@ void main() {
     test('falls back to hardcoded message when composeViaAgent returns empty',
         () async {
       queries.upsertStandupConfig(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         promptHour: 9,
       );
 
@@ -205,7 +205,7 @@ void main() {
 
     test('sends hardcoded message when composeViaAgent is null', () async {
       queries.upsertStandupConfig(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         promptHour: 9,
       );
 

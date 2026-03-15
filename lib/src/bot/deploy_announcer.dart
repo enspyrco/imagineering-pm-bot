@@ -1,10 +1,10 @@
 /// Self-announcing deploy: Dreamfinder reads its own source code changes
-/// and announces its reimagining to the Signal group in its own voice.
+/// and announces its reimagining to the group in its own voice.
 ///
 /// On startup, if the version has changed since last deploy, the bot:
 /// 1. Reads baked-in changelog and diff stat (compiled into the binary)
 /// 2. Routes them through the agent loop with a reflective prompt
-/// 3. Sends the composed announcement to the configured Signal group
+/// 3. Sends the composed announcement to the configured group
 /// 4. Persists the new version so it doesn't re-announce on restart
 library;
 

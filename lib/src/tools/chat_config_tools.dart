@@ -2,15 +2,15 @@
 ///
 /// Chat config tools (admin-gated via `requiresAdmin`):
 /// - `get_chat_config`: Fetch workspace link and default board for a group.
-/// - `link_workspace`: Link a Signal group to a Kan workspace. (admin)
+/// - `link_workspace`: Link a group to a Kan workspace. (admin)
 /// - `unlink_workspace`: Remove the workspace link. (admin)
 /// - `set_default_board`: Set the default board/list for card creation. (admin)
 ///
 /// User mapping tools:
-/// - `get_user_mapping`: Look up a Signal UUID's Kan account.
-/// - `create_user_mapping`: Map a Signal user to a Kan email. (admin)
+/// - `get_user_mapping`: Look up a user's Kan account by their ID.
+/// - `create_user_mapping`: Map a user to a Kan email. (admin)
 /// - `remove_user_mapping`: Remove a user mapping. (admin)
-/// - `list_user_mappings`: List all Signal → Kan user mappings.
+/// - `list_user_mappings`: List all user → Kan user mappings.
 library;
 
 import 'dart:convert';
@@ -38,19 +38,19 @@ CustomToolDef _getChatConfigTool(Queries queries) {
   return CustomToolDef(
     name: 'get_chat_config',
     description: 'Get the workspace link and default board configuration for a '
-        'Signal group. Returns null fields if not configured.',
+        'group. Returns null fields if not configured.',
     inputSchema: const <String, dynamic>{
       'type': 'object',
       'properties': <String, dynamic>{
-        'signal_group_id': <String, dynamic>{
+        'group_id': <String, dynamic>{
           'type': 'string',
-          'description': 'The Signal group ID to look up.',
+          'description': 'The group ID to look up.',
         },
       },
-      'required': <String>['signal_group_id'],
+      'required': <String>['group_id'],
     },
     handler: (args) async {
-      final groupId = args['signal_group_id'] as String;
+      final groupId = args['group_id'] as String;
       final workspace = queries.getWorkspaceLink(groupId);
       final board = queries.getDefaultBoardConfig(groupId);
 
@@ -79,14 +79,14 @@ CustomToolDef _linkWorkspaceTool(Queries queries) {
   return CustomToolDef(
     requiresAdmin: true,
     name: 'link_workspace',
-    description: 'Link a Signal group to a Kan workspace. Admin-only. '
+    description: 'Link a group to a Kan workspace. Admin-only. '
         'Only one workspace per group is allowed.',
     inputSchema: const <String, dynamic>{
       'type': 'object',
       'properties': <String, dynamic>{
-        'signal_group_id': <String, dynamic>{
+        'group_id': <String, dynamic>{
           'type': 'string',
-          'description': 'The Signal group ID.',
+          'description': 'The group ID.',
         },
         'workspace_public_id': <String, dynamic>{
           'type': 'string',
@@ -98,18 +98,18 @@ CustomToolDef _linkWorkspaceTool(Queries queries) {
         },
         'created_by_uuid': <String, dynamic>{
           'type': 'string',
-          'description': 'The Signal UUID of the admin creating the link.',
+          'description': 'The user ID of the admin creating the link.',
         },
       },
       'required': <String>[
-        'signal_group_id',
+        'group_id',
         'workspace_public_id',
         'workspace_name',
         'created_by_uuid',
       ],
     },
     handler: (args) async {
-      final groupId = args['signal_group_id'] as String;
+      final groupId = args['group_id'] as String;
 
       // Check if already linked.
       final existing = queries.getWorkspaceLink(groupId);
@@ -122,7 +122,7 @@ CustomToolDef _linkWorkspaceTool(Queries queries) {
       }
 
       queries.createWorkspaceLink(
-        signalGroupId: groupId,
+        groupId: groupId,
         workspacePublicId: args['workspace_public_id'] as String,
         workspaceName: args['workspace_name'] as String,
         createdByUuid: args['created_by_uuid'] as String,
@@ -140,19 +140,19 @@ CustomToolDef _unlinkWorkspaceTool(Queries queries) {
   return CustomToolDef(
     requiresAdmin: true,
     name: 'unlink_workspace',
-    description: 'Remove the workspace link for a Signal group. Admin-only.',
+    description: 'Remove the workspace link for a group. Admin-only.',
     inputSchema: const <String, dynamic>{
       'type': 'object',
       'properties': <String, dynamic>{
-        'signal_group_id': <String, dynamic>{
+        'group_id': <String, dynamic>{
           'type': 'string',
-          'description': 'The Signal group ID.',
+          'description': 'The group ID.',
         },
       },
-      'required': <String>['signal_group_id'],
+      'required': <String>['group_id'],
     },
     handler: (args) async {
-      final groupId = args['signal_group_id'] as String;
+      final groupId = args['group_id'] as String;
       final existing = queries.getWorkspaceLink(groupId);
       if (existing == null) {
         return jsonEncode(<String, dynamic>{
@@ -174,15 +174,15 @@ CustomToolDef _setDefaultBoardTool(Queries queries) {
   return CustomToolDef(
     requiresAdmin: true,
     name: 'set_default_board',
-    description: 'Set the default board and list for card creation in a Signal '
+    description: 'Set the default board and list for card creation in a '
         'group. Admin-only. New cards created via natural language will '
         'be placed in this board/list by default.',
     inputSchema: const <String, dynamic>{
       'type': 'object',
       'properties': <String, dynamic>{
-        'signal_group_id': <String, dynamic>{
+        'group_id': <String, dynamic>{
           'type': 'string',
-          'description': 'The Signal group ID.',
+          'description': 'The group ID.',
         },
         'board_public_id': <String, dynamic>{
           'type': 'string',
@@ -202,7 +202,7 @@ CustomToolDef _setDefaultBoardTool(Queries queries) {
         },
       },
       'required': <String>[
-        'signal_group_id',
+        'group_id',
         'board_public_id',
         'board_name',
         'list_public_id',
@@ -211,7 +211,7 @@ CustomToolDef _setDefaultBoardTool(Queries queries) {
     },
     handler: (args) async {
       queries.upsertDefaultBoardConfig(
-        signalGroupId: args['signal_group_id'] as String,
+        groupId: args['group_id'] as String,
         boardPublicId: args['board_public_id'] as String,
         boardName: args['board_name'] as String,
         listPublicId: args['list_public_id'] as String,
@@ -234,19 +234,19 @@ CustomToolDef _setDefaultBoardTool(Queries queries) {
 CustomToolDef _getUserMappingTool(Queries queries) {
   return CustomToolDef(
     name: 'get_user_mapping',
-    description: 'Look up a Signal user\'s Kan account mapping by their UUID.',
+    description: 'Look up a user\'s Kan account mapping by their user ID.',
     inputSchema: const <String, dynamic>{
       'type': 'object',
       'properties': <String, dynamic>{
-        'signal_uuid': <String, dynamic>{
+        'user_id': <String, dynamic>{
           'type': 'string',
-          'description': 'The Signal UUID to look up.',
+          'description': 'The user ID to look up.',
         },
       },
-      'required': <String>['signal_uuid'],
+      'required': <String>['user_id'],
     },
     handler: (args) async {
-      final link = queries.getUserLink(args['signal_uuid'] as String);
+      final link = queries.getUserLink(args['user_id'] as String);
       if (link == null) {
         return jsonEncode(<String, dynamic>{
           'found': false,
@@ -255,8 +255,8 @@ CustomToolDef _getUserMappingTool(Queries queries) {
 
       return jsonEncode(<String, dynamic>{
         'found': true,
-        'signal_uuid': link.signalUuid,
-        'signal_display_name': link.signalDisplayName,
+        'user_id': link.userId,
+        'display_name': link.displayName,
         'kan_user_email': link.kanUserEmail,
         'workspace_member_public_id': link.workspaceMemberPublicId,
       });
@@ -268,32 +268,32 @@ CustomToolDef _createUserMappingTool(Queries queries) {
   return CustomToolDef(
     requiresAdmin: true,
     name: 'create_user_mapping',
-    description: 'Map a Signal user (UUID) to their Kan account email. '
+    description: 'Map a user (by ID) to their Kan account email. '
         'Admin-only.',
     inputSchema: const <String, dynamic>{
       'type': 'object',
       'properties': <String, dynamic>{
-        'signal_uuid': <String, dynamic>{
+        'user_id': <String, dynamic>{
           'type': 'string',
-          'description': 'The Signal UUID of the user.',
+          'description': 'The user ID.',
         },
         'kan_user_email': <String, dynamic>{
           'type': 'string',
           'description': 'The user\'s Kan account email.',
         },
-        'signal_display_name': <String, dynamic>{
+        'display_name': <String, dynamic>{
           'type': 'string',
-          'description': 'The user\'s Signal display name.',
+          'description': 'The user\'s display name.',
         },
         'created_by_uuid': <String, dynamic>{
           'type': 'string',
-          'description': 'The Signal UUID of the admin creating this mapping.',
+          'description': 'The user ID of the admin creating this mapping.',
         },
       },
-      'required': <String>['signal_uuid', 'kan_user_email'],
+      'required': <String>['user_id', 'kan_user_email'],
     },
     handler: (args) async {
-      final uuid = args['signal_uuid'] as String;
+      final uuid = args['user_id'] as String;
 
       // Check if already mapped.
       final existing = queries.getUserLink(uuid);
@@ -306,15 +306,15 @@ CustomToolDef _createUserMappingTool(Queries queries) {
       }
 
       queries.createUserLink(
-        signalUuid: uuid,
+        userId: uuid,
         kanUserEmail: args['kan_user_email'] as String,
-        signalDisplayName: args['signal_display_name'] as String?,
+        displayName: args['display_name'] as String?,
         createdByUuid: args['created_by_uuid'] as String?,
       );
 
       return jsonEncode(<String, dynamic>{
         'success': true,
-        'signal_uuid': uuid,
+        'user_id': uuid,
         'kan_user_email': args['kan_user_email'],
       });
     },
@@ -325,19 +325,19 @@ CustomToolDef _removeUserMappingTool(Queries queries) {
   return CustomToolDef(
     requiresAdmin: true,
     name: 'remove_user_mapping',
-    description: 'Remove a Signal user\'s Kan account mapping. Admin-only.',
+    description: 'Remove a user\'s Kan account mapping. Admin-only.',
     inputSchema: const <String, dynamic>{
       'type': 'object',
       'properties': <String, dynamic>{
-        'signal_uuid': <String, dynamic>{
+        'user_id': <String, dynamic>{
           'type': 'string',
-          'description': 'The Signal UUID of the user to unmap.',
+          'description': 'The user ID of the user to unmap.',
         },
       },
-      'required': <String>['signal_uuid'],
+      'required': <String>['user_id'],
     },
     handler: (args) async {
-      final uuid = args['signal_uuid'] as String;
+      final uuid = args['user_id'] as String;
       final existing = queries.getUserLink(uuid);
       if (existing == null) {
         return jsonEncode(<String, dynamic>{
@@ -358,7 +358,7 @@ CustomToolDef _removeUserMappingTool(Queries queries) {
 CustomToolDef _listUserMappingsTool(Queries queries) {
   return CustomToolDef(
     name: 'list_user_mappings',
-    description: 'List all Signal → Kan user mappings.',
+    description: 'List all user → Kan user mappings.',
     inputSchema: const <String, dynamic>{
       'type': 'object',
       'properties': <String, dynamic>{},
@@ -371,8 +371,8 @@ CustomToolDef _listUserMappingsTool(Queries queries) {
         'mappings': <Map<String, dynamic>>[
           for (final link in links)
             <String, dynamic>{
-              'signal_uuid': link.signalUuid,
-              'signal_display_name': link.signalDisplayName,
+              'user_id': link.userId,
+              'display_name': link.displayName,
               'kan_user_email': link.kanUserEmail,
             },
         ],

@@ -9,7 +9,7 @@ import 'dart:convert';
 import '../agent/tool_registry.dart';
 import '../kickstart/kickstart_state.dart';
 
-/// Callback type for sending a message to a Signal group.
+/// Callback type for sending a message to a group.
 typedef SendGroupMessage = Future<void> Function(
     String groupId, String message);
 
@@ -36,15 +36,15 @@ CustomToolDef _advanceKickstartTool(KickstartState state) {
     inputSchema: const <String, dynamic>{
       'type': 'object',
       'properties': <String, dynamic>{
-        'signal_group_id': <String, dynamic>{
+        'group_id': <String, dynamic>{
           'type': 'string',
-          'description': 'The Signal group ID.',
+          'description': 'The group ID.',
         },
       },
-      'required': <String>['signal_group_id'],
+      'required': <String>['group_id'],
     },
     handler: (args) async {
-      final groupId = args['signal_group_id'] as String;
+      final groupId = args['group_id'] as String;
       final nextStep = state.advanceKickstart(groupId);
 
       if (nextStep == null) {
@@ -73,15 +73,15 @@ CustomToolDef _completeKickstartTool(KickstartState state) {
     inputSchema: const <String, dynamic>{
       'type': 'object',
       'properties': <String, dynamic>{
-        'signal_group_id': <String, dynamic>{
+        'group_id': <String, dynamic>{
           'type': 'string',
-          'description': 'The Signal group ID.',
+          'description': 'The group ID.',
         },
       },
-      'required': <String>['signal_group_id'],
+      'required': <String>['group_id'],
     },
     handler: (args) async {
-      final groupId = args['signal_group_id'] as String;
+      final groupId = args['group_id'] as String;
       state.completeKickstart(groupId);
 
       return jsonEncode(<String, dynamic>{
@@ -101,19 +101,19 @@ CustomToolDef _postKickstartSummaryTool(SendGroupMessage sendGroupMessage) {
     inputSchema: const <String, dynamic>{
       'type': 'object',
       'properties': <String, dynamic>{
-        'signal_group_id': <String, dynamic>{
+        'group_id': <String, dynamic>{
           'type': 'string',
-          'description': 'The Signal group ID to post the summary to.',
+          'description': 'The group ID to post the summary to.',
         },
         'summary': <String, dynamic>{
           'type': 'string',
           'description': 'The onboarding summary message to post.',
         },
       },
-      'required': <String>['signal_group_id', 'summary'],
+      'required': <String>['group_id', 'summary'],
     },
     handler: (args) async {
-      final groupId = args['signal_group_id'] as String;
+      final groupId = args['group_id'] as String;
       final summary = args['summary'] as String;
 
       try {

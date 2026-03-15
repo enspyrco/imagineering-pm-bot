@@ -3,23 +3,20 @@
 > See [README.md](README.md) for full project documentation, architecture diagrams,
 > Signal integration details, MCP integration details, and deployment guide.
 
-**Dreamfinder** is a Signal-based PM bot for the Imagineering org. Every message flows
-through a Claude agent loop with access to MCP tools (Kan.bn, Outline, Radicale,
-Playwright) plus custom tools. No slash commands — natural language only.
+**Dreamfinder** is a chat-based PM bot for the Imagineering org, migrating from Signal
+to Matrix. Every message flows through a Claude agent loop with access to MCP tools
+(Kan.bn, Outline, Radicale, Playwright) plus custom tools. No slash commands — natural
+language only. A separate "matrix chat superbridge" handles relay between Matrix and
+Signal/Discord/Telegram/WhatsApp using puppet accounts — Dreamfinder only connects to
+Matrix.
 
-Adapted from **xdeca-pm-bot** (Telegram). Key difference: Signal has no official bot
-API, no message editing, no inline keyboards, and stricter rate limiting.
+Adapted from **xdeca-pm-bot** (Telegram).
 
-**Status**: Active sprint — end-to-end bot is runnable. Signal client, agent loop,
-conversation history (DB-backed), tool registry, MCP manager, system prompt, SQLite
-persistence (14 domain tables), custom tools (identity + chat config + memory +
-kickstart), standup orchestration, deploy announcements, OAuth auth, RAG-based
-long-term memory (all 4 phases complete), calendar event awareness, and autonomous
-dream cycle (multi-phase with parallel branching) are implemented with 519+ tests.
-Kickstart guided onboarding is in progress. Speed is a primary
-concern. Prefer working code over perfect abstractions. Skip plan mode for
-straightforward tasks, minimize over-engineering, and keep momentum high. Still
-respect correctness and type safety, but bias toward shipping.
+**Status**: Active sprint — Signal → Matrix migration in progress (branch:
+`feat/discord-migration`). See **Migration Plan** below for phases. 519+ tests.
+Speed is a primary concern. Prefer working code over perfect abstractions. Skip plan
+mode for straightforward tasks, minimize over-engineering, and keep momentum high.
+Still respect correctness and type safety, but bias toward shipping.
 
 ## Tech Stack
 
@@ -27,7 +24,7 @@ respect correctness and type safety, but bias toward shipping.
 | --------------- | -------------------------------------- |
 | Language        | Dart 3.6+                              |
 | Runtime         | Dart VM                                |
-| Messaging       | Signal (via signal-cli-rest-api)       |
+| Messaging       | Matrix (migrating from Signal)         |
 | LLM             | Claude Sonnet 4.6 (anthropic_sdk_dart) |
 | MCP             | dart_mcp ^0.4.1                        |
 | Database        | SQLite (via sqlite3 package)            |
@@ -40,7 +37,8 @@ respect correctness and type safety, but bias toward shipping.
 ```
 lib/
   src/
-    signal/         # Signal client, message models
+    signal/         # Signal client, message models (being replaced by matrix/)
+    matrix/         # Matrix client, models, auth (Phase 2)
     agent/          # Agent loop, system prompt, tool registry, conversation history
     mcp/            # MCP subprocess manager
     memory/         # RAG long-term memory (embedding client, pipeline, retriever)
@@ -73,8 +71,13 @@ dart compile exe bin/dreamfinder.dart # Compile for production
 ```bash
 ANTHROPIC_API_KEY=            # Claude API key
 CLAUDE_REFRESH_TOKEN=         # OAuth refresh token (alternative to API key)
-SIGNAL_PHONE_NUMBER=          # Bot's registered Signal phone number
-SIGNAL_API_URL=               # signal-cli-rest-api base URL
+MATRIX_HOMESERVER=            # Matrix homeserver URL (e.g., https://matrix.imagineering.cc)
+MATRIX_ACCESS_TOKEN=          # Matrix bot access token (or use username+password)
+MATRIX_USERNAME=              # Matrix login username (alternative to access token)
+MATRIX_PASSWORD=              # Matrix login password (alternative to access token)
+MATRIX_IGNORE_ROOMS=          # Comma-separated room IDs to ignore (optional)
+SIGNAL_PHONE_NUMBER=          # (deprecated) Bot's registered Signal phone number
+SIGNAL_API_URL=               # (deprecated) signal-cli-rest-api base URL
 KAN_BASE_URL=                 # Kan.bn instance URL
 KAN_API_KEY=                  # Kan.bn API key
 OUTLINE_BASE_URL=             # Outline instance URL
@@ -108,19 +111,18 @@ LOG_LEVEL=                    # Logging level (default: info)
 
 ### Error Handling
 
-- Wrap external calls (Signal API, MCP servers, Anthropic API) in try/catch with
+- Wrap external calls (Matrix API, MCP servers, Anthropic API) in try/catch with
   structured error logging. Never swallow errors silently.
 - Use custom exception classes implementing `Exception` for recoverable domain-specific
   failures (Dart convention: `Exception` for recoverable, `Error` for programmer bugs).
-- Signal-specific: responses must be complete on first send (no editing). If an
-  operation fails mid-way, send a clear error message to the user.
+- If an operation fails mid-way, send a clear error message to the user.
 
 ### Testing (ATDD)
 
 - **Write acceptance tests first**, then implement to make them pass.
 - Tests mirror the `lib/src/` directory structure inside `test/`.
 - Integration tests for MCP tools use recorded fixtures — never hit live services.
-- Unit test business logic in isolation; mock external boundaries (Signal, MCP, DB).
+- Unit test business logic in isolation; mock external boundaries (Matrix, MCP, DB).
 - Use `mocktail` for mocking.
 
 ### Imports & Modules
@@ -134,7 +136,8 @@ LOG_LEVEL=                    # Logging level (default: info)
 - SQLite via the `sqlite3` package (synchronous API). No ORM — raw SQL with
   parameterized queries in `Queries` class and `MessageRepository`.
 - Schema defined in `database.dart` with versioned migrations (`_migrateToV1()` through
-  `_migrateToV5()`). Version tracked in `schema_version` table. Current: v5.
+  `_migrateToV6()`). Version tracked in `schema_version` table. Current: v6.
+- V6 migration renames Signal-specific tables/columns to platform-agnostic names.
 - Never store secrets or API keys in SQLite.
 
 ## Git & Workflow
@@ -146,40 +149,93 @@ LOG_LEVEL=                    # Logging level (default: info)
 - **Always work on a feature branch** — never commit directly to `main`. Create a
   new branch before starting work, even for small changes.
 
-## Future Directions
+## Signal → Matrix Migration Plan
 
-Prioritized by value/effort ratio. These are the next features to build.
+Dreamfinder is moving from Signal to Matrix. A "matrix chat superbridge" relays
+between Matrix and Signal/Discord/Telegram/WhatsApp using puppet accounts, so
+Dreamfinder only needs to connect to Matrix.
 
-### 1. ~~Timezone support for standup prompts~~ (DONE)
-The `timezone` package converts server UTC to the group's configured IANA timezone
-before comparing against `config.promptHour`. Weekend checks and session dedup also
-use local time. Calendar event display in the system prompt uses `EVENT_TIMEZONE`.
+```
+Signal ──┐
+Discord ──┤── Matrix Superbridge ──── Matrix ──── Dreamfinder
+Telegram ─┤      (puppets)
+WhatsApp ──┘
+```
 
-### 2. ~~Calendar event awareness~~ (DONE)
-Upcoming events from the Radicale calendar are injected into the system prompt
-alongside memories. Set `CALENDAR_URL` to enable. The `CalendarRetriever` fetches
-events via MCP with a 7-day lookahead on every message.
+**Branch**: `feat/discord-migration`
+**PR strategy**: PR 1 (Phase 1 rename) → PR 2 (Phase 2 Matrix client) → PR 3 (Phases 3–5 switchover)
 
-### 3. ~~Dream cycle~~ (DONE)
-Autonomous multi-phase agent session triggered by "goodnight" messages. Modeled after
-real sleep stages: Light (N1→N2) → Deep (N2→N3) → Branch per spark (parallel via
-`Future.wait`) → REM (converge) → Wake. Adaptive depth — quiet days skip deeper
-phases. Token usage tracked across all phases/branches. Schema v5 adds `dream_cycles`
-table with UNIQUE(group, date) constraint.
+### Phase 1: Platform-Agnostic Rename (IN PROGRESS)
 
-### 4. Kickstart guided onboarding (IN PROGRESS)
+Pure rename — no behavioral changes. Bot still runs on Signal after this phase.
+
+- **1a. Schema V6 migration** — `ALTER TABLE RENAME TO/COLUMN` for Signal-specific
+  names → generic names (`signal_group_id` → `group_id`, `signal_uuid` → `user_id`,
+  `signal_workspace_links` → `workspace_links`, `signal_user_links` → `user_links`)
+- **1b. Schema record classes** — `SignalWorkspaceLink` → `WorkspaceLink`,
+  `SignalUserLink` → `UserLink`, all `signalGroupId` → `groupId` fields, etc.
+- **1c. Query mixins** — SQL strings, method signatures, param names in all 7 files
+- **1d. Tool parameter names** — `signal_group_id` → `group_id` in tool input schemas
+- **1e. Agent model renames** — `senderUuid` → `senderId`, `adminUuids` → `adminIds`,
+  `ADMIN_UUIDS` → `ADMIN_IDS` (keep fallback)
+- **1f. Kickstart prompt** — replace Signal references in prompt text
+- **1g. System prompt** — `UUID:` → `ID:` label change
+- **1h. Update tests + verify** — all 519+ tests pass, `dart analyze` clean
+
+### Phase 2: Matrix Client Layer
+
+New code, no behavioral changes. Uses `http` package (already a dependency) for direct
+HTTP to the Matrix Client-Server API — same lightweight pattern as `SignalClient`.
+
+- **2a.** No new dependencies needed
+- **2b. Matrix models** — `MatrixEvent`, `MatrixSyncResponse`, `MatrixInvite`
+- **2c. Matrix client** — `whoAmI()`, `sync()`, `sendMessage()`, `sendTypingIndicator()`,
+  `joinRoom()`, `getRoomMembers()`. Sync token persisted in `bot_metadata` table.
+  DM detection via member count. Mention detection via Matrix pills + name regex.
+- **2d. Matrix auth** — `MATRIX_ACCESS_TOKEN` or `MATRIX_USERNAME`+`MATRIX_PASSWORD`
+- **2e. Tests** — mock `http.Client`, cover sync parsing, DM detection, mentions,
+  auto-join, send, token persistence, initial sync skip, login flow
+
+### Phase 3: Main Loop Refactor
+
+Replace Signal polling with Matrix sync loop in `bin/dreamfinder.dart`.
+
+- **3a.** Config changes — remove `signalApiUrl`/`signalPhoneNumber`, add Matrix env vars
+- **3b.** Replace polling loop with `/sync` long-polling loop
+- **3c.** Field mapping: `sourceUuid` → `event.sender`, `chatId` → `event.roomId`
+- **3d.** All `signalClient.sendMessage()` → `matrixClient.sendMessage()` callsites
+- **3e.** DM detection in RateLimiter — `isDm` parameter instead of `chatId.startsWith('+')`
+- **3f.** Remove Signal auto-recovery, add Matrix reconnect with exponential backoff
+- **3g.** Delete `lib/src/signal/` and `test/signal/`
+
+### Phase 4: System Prompt Updates
+
+- "a Signal bot" → "a chat bot"
+- Add Markdown formatting guidance (Matrix supports it)
+- Remove "no message editing" / Signal-specific caveats
+
+### Phase 5: Deployment
+
+- Remove `signal-api` service and `signal_data` volume from Docker Compose
+- Update env vars on VPS
+- V6 migration runs automatically; old Signal chat IDs become orphaned
+- Optional one-time SQL script to remap old Signal chat_ids → Matrix room IDs
+
+## Other Future Directions
+
+### Kickstart guided onboarding (IN PROGRESS)
 5-step guided setup triggered by "kickstart" / "get started" / "let's set up":
 Workspace Setup → Team Roster → Project Seeding → Knowledge Dump → Dream Primer.
 State persisted via `bot_metadata` table (no migration needed). System prompt injection
 via `_buildFullSystemPrompt`. Custom tools: `advance_kickstart`, `complete_kickstart`.
 
-### 5. Proactive task nudges
+### Proactive task nudges
 The scheduler + Kan MCP tools exist but Dreamfinder never proactively reminds about
 overdue or stale cards. Add a scheduled job that queries Kan for overdue tasks and
 sends reminder messages via the agent loop (in-character). The `sent_reminders` table
 already tracks dedup for this — it just needs to be wired up.
 
-### 6. sqlite-vec migration (deferred)
+### sqlite-vec migration (deferred)
 Brute-force cosine similarity is <10ms for 10K vectors. Only revisit if the memory
 store exceeds ~100K records. The current design doesn't paint us into a corner — the
 swap is well-contained in `getVisibleMemories` + the retriever's scoring loop.

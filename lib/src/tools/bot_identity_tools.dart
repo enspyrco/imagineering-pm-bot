@@ -82,7 +82,7 @@ CustomToolDef _setIdentityTool(Queries queries) {
         },
         'chosen_in_group_id': <String, dynamic>{
           'type': 'string',
-          'description': 'The Signal group ID where this identity was chosen.',
+          'description': 'The group ID where this identity was chosen.',
         },
       },
       'required': <String>['name', 'pronouns', 'tone'],

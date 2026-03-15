@@ -27,7 +27,7 @@ void main() {
 
     test('createWorkspaceLink then getWorkspaceLink round-trips', () {
       q.createWorkspaceLink(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         workspacePublicId: 'ws-abc',
         workspaceName: 'My Workspace',
         createdByUuid: 'uuid-admin',
@@ -42,7 +42,7 @@ void main() {
 
     test('deleteWorkspaceLink removes the link', () {
       q.createWorkspaceLink(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         workspacePublicId: 'ws-abc',
         workspaceName: 'My Workspace',
         createdByUuid: 'uuid-admin',
@@ -54,13 +54,13 @@ void main() {
 
     test('getAllWorkspaceLinks returns all links', () {
       q.createWorkspaceLink(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         workspacePublicId: 'ws-1',
         workspaceName: 'Workspace 1',
         createdByUuid: 'uuid-a',
       );
       q.createWorkspaceLink(
-        signalGroupId: 'group-2',
+        groupId: 'group-2',
         workspacePublicId: 'ws-2',
         workspaceName: 'Workspace 2',
         createdByUuid: 'uuid-b',
@@ -72,7 +72,7 @@ void main() {
 
     test('createWorkspaceLink enforces unique signalGroupId', () {
       q.createWorkspaceLink(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         workspacePublicId: 'ws-1',
         workspaceName: 'First',
         createdByUuid: 'uuid-a',
@@ -80,7 +80,7 @@ void main() {
 
       expect(
         () => q.createWorkspaceLink(
-          signalGroupId: 'group-1',
+          groupId: 'group-1',
           workspacePublicId: 'ws-2',
           workspaceName: 'Duplicate',
           createdByUuid: 'uuid-b',
@@ -101,21 +101,21 @@ void main() {
 
     test('createUserLink then getUserLink round-trips', () {
       q.createUserLink(
-        signalUuid: 'uuid-1',
+        userId: 'uuid-1',
         kanUserEmail: 'alice@example.com',
-        signalDisplayName: 'Alice',
+        displayName: 'Alice',
         createdByUuid: 'uuid-admin',
       );
 
       final link = q.getUserLink('uuid-1');
       expect(link, isNotNull);
       expect(link!.kanUserEmail, equals('alice@example.com'));
-      expect(link.signalDisplayName, equals('Alice'));
+      expect(link.displayName, equals('Alice'));
     });
 
     test('updateUserLink modifies existing link', () {
       q.createUserLink(
-        signalUuid: 'uuid-1',
+        userId: 'uuid-1',
         kanUserEmail: 'old@example.com',
       );
 
@@ -127,7 +127,7 @@ void main() {
 
     test('deleteUserLink removes the link', () {
       q.createUserLink(
-        signalUuid: 'uuid-1',
+        userId: 'uuid-1',
         kanUserEmail: 'alice@example.com',
       );
 
@@ -137,11 +137,11 @@ void main() {
 
     test('getAllUserLinks returns all links', () {
       q.createUserLink(
-        signalUuid: 'uuid-1',
+        userId: 'uuid-1',
         kanUserEmail: 'a@example.com',
       );
       q.createUserLink(
-        signalUuid: 'uuid-2',
+        userId: 'uuid-2',
         kanUserEmail: 'b@example.com',
       );
 
@@ -150,13 +150,13 @@ void main() {
 
     test('getUserLinkByEmail finds by email', () {
       q.createUserLink(
-        signalUuid: 'uuid-1',
+        userId: 'uuid-1',
         kanUserEmail: 'alice@example.com',
       );
 
       final link = q.getUserLinkByEmail('alice@example.com');
       expect(link, isNotNull);
-      expect(link!.signalUuid, equals('uuid-1'));
+      expect(link!.userId, equals('uuid-1'));
     });
 
     test('getUserLinkByEmail returns null for unknown email', () {
@@ -175,7 +175,7 @@ void main() {
 
     test('upsertDefaultBoardConfig inserts new config', () {
       q.upsertDefaultBoardConfig(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         boardPublicId: 'board-1',
         listPublicId: 'list-1',
         boardName: 'Sprint Board',
@@ -190,7 +190,7 @@ void main() {
 
     test('upsertDefaultBoardConfig updates on conflict', () {
       q.upsertDefaultBoardConfig(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         boardPublicId: 'board-1',
         listPublicId: 'list-1',
         boardName: 'Old Board',
@@ -198,7 +198,7 @@ void main() {
       );
 
       q.upsertDefaultBoardConfig(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         boardPublicId: 'board-2',
         listPublicId: 'list-2',
         boardName: 'New Board',
@@ -245,7 +245,7 @@ void main() {
       // Should still be exactly one row.
       final all = db.handle.select(
         'SELECT COUNT(*) as cnt FROM sent_reminders '
-        "WHERE card_public_id = 'card-1' AND signal_group_id = 'group-1'",
+        "WHERE card_public_id = 'card-1' AND group_id = 'group-1'",
       );
       expect(all.first['cnt'], equals(1));
     });
@@ -254,7 +254,7 @@ void main() {
       // Insert a reminder with an old timestamp.
       db.handle.execute(
         'INSERT INTO sent_reminders '
-        '(card_public_id, signal_group_id, reminder_type, last_reminder_at) '
+        '(card_public_id, group_id, reminder_type, last_reminder_at) '
         "VALUES ('card-old', 'group-1', 'overdue', datetime('now', '-30 days'))",
       );
       q.upsertReminder('card-new', 'group-1');
@@ -341,7 +341,7 @@ void main() {
     });
 
     test('upsertStandupConfig inserts with defaults', () {
-      q.upsertStandupConfig(signalGroupId: 'group-1');
+      q.upsertStandupConfig(groupId: 'group-1');
 
       final config = q.getStandupConfig('group-1');
       expect(config, isNotNull);
@@ -354,11 +354,11 @@ void main() {
     });
 
     test('upsertStandupConfig does partial update on conflict', () {
-      q.upsertStandupConfig(signalGroupId: 'group-1');
+      q.upsertStandupConfig(groupId: 'group-1');
 
       // Update only promptHour, leave everything else.
       q.upsertStandupConfig(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         promptHour: 10,
       );
 
@@ -370,8 +370,8 @@ void main() {
     });
 
     test('getAllStandupConfigs returns all configs', () {
-      q.upsertStandupConfig(signalGroupId: 'group-1');
-      q.upsertStandupConfig(signalGroupId: 'group-2');
+      q.upsertStandupConfig(groupId: 'group-1');
+      q.upsertStandupConfig(groupId: 'group-2');
 
       expect(q.getAllStandupConfigs(), hasLength(2));
     });
@@ -388,7 +388,7 @@ void main() {
 
     test('createStandupSession then getActiveStandupSession round-trips', () {
       q.createStandupSession(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         date: '2026-02-28',
       );
 
@@ -399,7 +399,7 @@ void main() {
 
     test('updateStandupSession modifies status', () {
       q.createStandupSession(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         date: '2026-02-28',
       );
       final session = q.getActiveStandupSession('group-1', '2026-02-28')!;
@@ -413,13 +413,13 @@ void main() {
 
     test('enforces unique constraint on (signalGroupId, date)', () {
       q.createStandupSession(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         date: '2026-02-28',
       );
 
       expect(
         () => q.createStandupSession(
-          signalGroupId: 'group-1',
+          groupId: 'group-1',
           date: '2026-02-28',
         ),
         throwsA(isA<Exception>()),
@@ -428,11 +428,11 @@ void main() {
 
     test('allows same group on different dates', () {
       q.createStandupSession(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         date: '2026-02-28',
       );
       q.createStandupSession(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         date: '2026-03-01',
       );
 
@@ -450,7 +450,7 @@ void main() {
 
     setUp(() {
       q.createStandupSession(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         date: '2026-02-28',
       );
       sessionId = q.getActiveStandupSession('group-1', '2026-02-28')!.id;
@@ -459,7 +459,7 @@ void main() {
     test('upsertStandupResponse inserts new response', () {
       q.upsertStandupResponse(
         sessionId: sessionId,
-        signalUuid: 'uuid-1',
+        userId: 'uuid-1',
         yesterday: 'Fixed bugs',
         today: 'Writing tests',
       );
@@ -473,14 +473,14 @@ void main() {
     test('upsertStandupResponse updates on conflict', () {
       q.upsertStandupResponse(
         sessionId: sessionId,
-        signalUuid: 'uuid-1',
+        userId: 'uuid-1',
         yesterday: 'Old update',
         today: 'Old plan',
       );
 
       q.upsertStandupResponse(
         sessionId: sessionId,
-        signalUuid: 'uuid-1',
+        userId: 'uuid-1',
         yesterday: 'New update',
         today: 'New plan',
         blockers: 'Blocked on review',
@@ -495,12 +495,12 @@ void main() {
     test('getStandupResponses returns all responses for a session', () {
       q.upsertStandupResponse(
         sessionId: sessionId,
-        signalUuid: 'uuid-1',
+        userId: 'uuid-1',
         rawMessage: 'Done stuff, doing stuff',
       );
       q.upsertStandupResponse(
         sessionId: sessionId,
-        signalUuid: 'uuid-2',
+        userId: 'uuid-2',
         rawMessage: 'All good',
       );
 
@@ -588,7 +588,7 @@ void main() {
       // Insert an old reminder directly.
       db.handle.execute(
         'INSERT INTO calendar_reminders '
-        '(event_uid, signal_group_id, reminder_window, sent_at) '
+        '(event_uid, group_id, reminder_window, sent_at) '
         "VALUES ('event-old', 'group-1', '1h', datetime('now', '-30 days'))",
       );
       q.recordCalendarReminder(

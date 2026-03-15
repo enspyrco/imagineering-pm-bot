@@ -1,7 +1,7 @@
 /// Schema model classes and enums for the Dreamfinder database.
 ///
 /// These types represent rows from the 10 domain tables adapted from
-/// xdeca-pm-bot (Telegram) to Signal (now called Dreamfinder). Key differences from Telegram:
+/// xdeca-pm-bot (Telegram). Key differences from Telegram:
 /// - Group IDs are base64 strings (not integers)
 /// - User IDs are UUIDs (not integers)
 /// - Display names replace @usernames
@@ -83,11 +83,11 @@ enum CalendarReminderWindow {
 // Model classes — one per table
 // ---------------------------------------------------------------------------
 
-/// Maps a Signal group to a Kan workspace.
-class SignalWorkspaceLink {
-  const SignalWorkspaceLink({
+/// Maps a chat group to a Kan workspace.
+class WorkspaceLink {
+  const WorkspaceLink({
     required this.id,
-    required this.signalGroupId,
+    required this.groupId,
     required this.workspacePublicId,
     required this.workspaceName,
     required this.createdAt,
@@ -95,19 +95,19 @@ class SignalWorkspaceLink {
   });
 
   final int id;
-  final String signalGroupId;
+  final String groupId;
   final String workspacePublicId;
   final String workspaceName;
   final String createdAt;
   final String createdByUuid;
 }
 
-/// Maps a Signal user (UUID) to their Kan account.
-class SignalUserLink {
-  const SignalUserLink({
+/// Maps a user (UUID) to their Kan account.
+class UserLink {
+  const UserLink({
     required this.id,
-    required this.signalUuid,
-    this.signalDisplayName,
+    required this.userId,
+    this.displayName,
     required this.kanUserEmail,
     this.workspaceMemberPublicId,
     required this.createdAt,
@@ -115,8 +115,8 @@ class SignalUserLink {
   });
 
   final int id;
-  final String signalUuid;
-  final String? signalDisplayName;
+  final String userId;
+  final String? displayName;
   final String kanUserEmail;
   final String? workspaceMemberPublicId;
   final String createdAt;
@@ -128,14 +128,14 @@ class SentReminder {
   const SentReminder({
     required this.id,
     required this.cardPublicId,
-    required this.signalGroupId,
+    required this.groupId,
     required this.reminderType,
     required this.lastReminderAt,
   });
 
   final int id;
   final String cardPublicId;
-  final String signalGroupId;
+  final String groupId;
   final ReminderType reminderType;
   final String lastReminderAt;
 }
@@ -161,11 +161,11 @@ class BotIdentityRecord {
   final String? chosenInGroupId;
 }
 
-/// Default board and list for card creation in a Signal group.
+/// Default board and list for card creation in a group.
 class DefaultBoardConfigRecord {
   const DefaultBoardConfigRecord({
     required this.id,
-    required this.signalGroupId,
+    required this.groupId,
     required this.boardPublicId,
     required this.listPublicId,
     required this.boardName,
@@ -174,7 +174,7 @@ class DefaultBoardConfigRecord {
   });
 
   final int id;
-  final String signalGroupId;
+  final String groupId;
   final String boardPublicId;
   final String listPublicId;
   final String boardName;
@@ -203,7 +203,7 @@ class OAuthTokenRecord {
 class StandupConfigRecord {
   const StandupConfigRecord({
     required this.id,
-    required this.signalGroupId,
+    required this.groupId,
     required this.enabled,
     required this.promptHour,
     required this.summaryHour,
@@ -214,7 +214,7 @@ class StandupConfigRecord {
   });
 
   final int id;
-  final String signalGroupId;
+  final String groupId;
   final bool enabled;
   final int promptHour;
   final int summaryHour;
@@ -228,7 +228,7 @@ class StandupConfigRecord {
 class StandupSession {
   const StandupSession({
     required this.id,
-    required this.signalGroupId,
+    required this.groupId,
     required this.date,
     this.promptMessageId,
     this.summaryMessageId,
@@ -237,7 +237,7 @@ class StandupSession {
   });
 
   final int id;
-  final String signalGroupId;
+  final String groupId;
   final String date;
   final String? promptMessageId;
   final String? summaryMessageId;
@@ -250,8 +250,8 @@ class StandupResponse {
   const StandupResponse({
     required this.id,
     required this.sessionId,
-    required this.signalUuid,
-    this.signalDisplayName,
+    required this.userId,
+    this.displayName,
     this.yesterday,
     this.today,
     this.blockers,
@@ -260,8 +260,8 @@ class StandupResponse {
 
   final int id;
   final int sessionId;
-  final String signalUuid;
-  final String? signalDisplayName;
+  final String userId;
+  final String? displayName;
   final String? yesterday;
   final String? today;
   final String? blockers;
@@ -290,7 +290,7 @@ enum DreamCycleStatus {
 class DreamCycleRecord {
   const DreamCycleRecord({
     required this.id,
-    required this.signalGroupId,
+    required this.groupId,
     required this.date,
     required this.status,
     required this.triggeredByUuid,
@@ -300,7 +300,7 @@ class DreamCycleRecord {
   });
 
   final int id;
-  final String signalGroupId;
+  final String groupId;
   final String date;
   final DreamCycleStatus status;
   final String triggeredByUuid;
@@ -314,14 +314,14 @@ class CalendarReminderRecord {
   const CalendarReminderRecord({
     required this.id,
     required this.eventUid,
-    required this.signalGroupId,
+    required this.groupId,
     required this.reminderWindow,
     required this.sentAt,
   });
 
   final int id;
   final String eventUid;
-  final String signalGroupId;
+  final String groupId;
   final CalendarReminderWindow reminderWindow;
   final String sentAt;
 }

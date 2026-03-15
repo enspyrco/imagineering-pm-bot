@@ -85,7 +85,7 @@ void main() {
       AgentInput(
           text: env.dataMessage!.message!,
           chatId: env.source,
-          senderUuid: env.sourceUuid,
+          senderId: env.sourceUuid,
           isAdmin: false),
       systemPrompt: 'You are Dreamfinder.',
     );

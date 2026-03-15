@@ -109,7 +109,7 @@ class AgentInput {
   const AgentInput({
     required this.text,
     required this.chatId,
-    required this.senderUuid,
+    required this.senderId,
     this.senderName,
     required this.isAdmin,
     this.isGroup = false,
@@ -120,7 +120,7 @@ class AgentInput {
 
   final String text;
   final String chatId;
-  final String senderUuid;
+  final String senderId;
   final String? senderName;
   final bool isAdmin;
 
@@ -385,7 +385,7 @@ class AgentLoop {
       chatId: input.chatId,
       userText: input.text,
       assistantText: assistantText,
-      senderUuid: input.senderUuid,
+      senderId: input.senderId,
       senderName: input.senderName,
       visibility: visibility,
     );

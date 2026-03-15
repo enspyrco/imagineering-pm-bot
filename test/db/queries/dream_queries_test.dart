@@ -19,7 +19,7 @@ void main() {
   group('DreamQueries', () {
     test('createDreamCycle returns row ID', () {
       final id = queries.createDreamCycle(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         date: '2026-03-14',
         triggeredByUuid: 'user-abc',
       );
@@ -28,14 +28,14 @@ void main() {
 
     test('getDreamCycle returns matching cycle', () {
       queries.createDreamCycle(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         date: '2026-03-14',
         triggeredByUuid: 'user-abc',
       );
 
       final cycle = queries.getDreamCycle('group-1', '2026-03-14');
       expect(cycle, isNotNull);
-      expect(cycle!.signalGroupId, equals('group-1'));
+      expect(cycle!.groupId, equals('group-1'));
       expect(cycle.date, equals('2026-03-14'));
       expect(cycle.status, equals(DreamCycleStatus.dreaming));
       expect(cycle.triggeredByUuid, equals('user-abc'));
@@ -47,14 +47,14 @@ void main() {
 
     test('UNIQUE constraint prevents duplicate group+date', () {
       queries.createDreamCycle(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         date: '2026-03-14',
         triggeredByUuid: 'user-abc',
       );
 
       expect(
         () => queries.createDreamCycle(
-          signalGroupId: 'group-1',
+          groupId: 'group-1',
           date: '2026-03-14',
           triggeredByUuid: 'user-def',
         ),
@@ -64,12 +64,12 @@ void main() {
 
     test('allows same group on different dates', () {
       final id1 = queries.createDreamCycle(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         date: '2026-03-14',
         triggeredByUuid: 'user-abc',
       );
       final id2 = queries.createDreamCycle(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         date: '2026-03-15',
         triggeredByUuid: 'user-abc',
       );
@@ -79,7 +79,7 @@ void main() {
 
     test('updateDreamCycle updates status and completedAt', () {
       final id = queries.createDreamCycle(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         date: '2026-03-14',
         triggeredByUuid: 'user-abc',
       );
@@ -97,7 +97,7 @@ void main() {
 
     test('updateDreamCycle records error on failure', () {
       final id = queries.createDreamCycle(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         date: '2026-03-14',
         triggeredByUuid: 'user-abc',
       );
@@ -116,7 +116,7 @@ void main() {
 
     test('getLastCompletedDreamCycle returns most recent completed', () {
       final id1 = queries.createDreamCycle(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         date: '2026-03-12',
         triggeredByUuid: 'user-abc',
       );
@@ -127,7 +127,7 @@ void main() {
       );
 
       final id2 = queries.createDreamCycle(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         date: '2026-03-13',
         triggeredByUuid: 'user-abc',
       );
@@ -144,7 +144,7 @@ void main() {
 
     test('getLastCompletedDreamCycle returns null when none completed', () {
       queries.createDreamCycle(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         date: '2026-03-14',
         triggeredByUuid: 'user-abc',
       );
@@ -155,7 +155,7 @@ void main() {
 
     test('getLastCompletedDreamCycle ignores other groups', () {
       final id = queries.createDreamCycle(
-        signalGroupId: 'group-2',
+        groupId: 'group-2',
         date: '2026-03-14',
         triggeredByUuid: 'user-abc',
       );

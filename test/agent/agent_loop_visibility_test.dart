@@ -45,7 +45,7 @@ void main() {
         const AgentInput(
           text: 'Plan the next sprint',
           chatId: 'group-1',
-          senderUuid: 'u1',
+          senderId: 'u1',
           senderName: 'Alice',
           isAdmin: false,
           isGroup: true,
@@ -67,7 +67,7 @@ void main() {
         const AgentInput(
           text: 'Update the bot name to Spark',
           chatId: 'dm-admin',
-          senderUuid: 'admin-uuid',
+          senderId: 'admin-uuid',
           senderName: 'Nick',
           isAdmin: true,
           isGroup: false,
@@ -89,7 +89,7 @@ void main() {
         const AgentInput(
           text: 'What are my tasks?',
           chatId: 'dm-user',
-          senderUuid: 'user-uuid',
+          senderId: 'user-uuid',
           senderName: 'Bob',
           isAdmin: false,
           isGroup: false,
@@ -111,7 +111,7 @@ void main() {
         const AgentInput(
           text: 'Send the standup prompt',
           chatId: 'group-1',
-          senderUuid: 'system',
+          senderId: 'system',
           isAdmin: true,
           isSystemInitiated: true,
           isGroup: true,
