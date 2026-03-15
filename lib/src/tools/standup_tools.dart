@@ -22,15 +22,15 @@ void registerStandupTools(ToolRegistry registry, Queries queries) {
 CustomToolDef _configureStandupTool(Queries queries) {
   return CustomToolDef(
     name: 'configure_standup',
-    description: 'Enable or configure daily standups for a Signal group. '
+    description: 'Enable or configure daily standups for a group. '
         'Sets the prompt hour, summary hour, timezone, and weekend/break-day '
         'skipping. Admin-only.',
     inputSchema: const <String, dynamic>{
       'type': 'object',
       'properties': <String, dynamic>{
-        'signal_group_id': <String, dynamic>{
+        'group_id': <String, dynamic>{
           'type': 'string',
-          'description': 'The Signal group ID.',
+          'description': 'The group ID.',
         },
         'enabled': <String, dynamic>{
           'type': 'boolean',
@@ -58,14 +58,14 @@ CustomToolDef _configureStandupTool(Queries queries) {
           'description': 'Skip standups on weekends (default: true).',
         },
       },
-      'required': <String>['signal_group_id'],
+      'required': <String>['group_id'],
     },
     requiresAdmin: true,
     handler: (args) async {
-      final groupId = args['signal_group_id'] as String;
+      final groupId = args['group_id'] as String;
 
       queries.upsertStandupConfig(
-        signalGroupId: groupId,
+        groupId: groupId,
         enabled: args['enabled'] as bool?,
         promptHour: args['prompt_hour'] as int?,
         summaryHour: args['summary_hour'] as int?,
@@ -89,20 +89,20 @@ CustomToolDef _configureStandupTool(Queries queries) {
 CustomToolDef _getStandupConfigTool(Queries queries) {
   return CustomToolDef(
     name: 'get_standup_config',
-    description: 'Get the standup configuration for a Signal group.',
+    description: 'Get the standup configuration for a group.',
     inputSchema: const <String, dynamic>{
       'type': 'object',
       'properties': <String, dynamic>{
-        'signal_group_id': <String, dynamic>{
+        'group_id': <String, dynamic>{
           'type': 'string',
-          'description': 'The Signal group ID.',
+          'description': 'The group ID.',
         },
       },
-      'required': <String>['signal_group_id'],
+      'required': <String>['group_id'],
     },
     handler: (args) async {
       final config =
-          queries.getStandupConfig(args['signal_group_id'] as String);
+          queries.getStandupConfig(args['group_id'] as String);
       if (config == null) {
         return jsonEncode(<String, dynamic>{
           'configured': false,
@@ -132,15 +132,15 @@ CustomToolDef _submitStandupResponseTool(Queries queries) {
     inputSchema: const <String, dynamic>{
       'type': 'object',
       'properties': <String, dynamic>{
-        'signal_group_id': <String, dynamic>{
+        'group_id': <String, dynamic>{
           'type': 'string',
-          'description': 'The Signal group ID.',
+          'description': 'The group ID.',
         },
-        'signal_uuid': <String, dynamic>{
+        'user_id': <String, dynamic>{
           'type': 'string',
-          'description': 'The Signal UUID of the team member.',
+          'description': 'The user ID of the team member.',
         },
-        'signal_display_name': <String, dynamic>{
+        'display_name': <String, dynamic>{
           'type': 'string',
           'description': 'The team member\'s display name.',
         },
@@ -162,17 +162,17 @@ CustomToolDef _submitStandupResponseTool(Queries queries) {
               'The original message text before parsing into fields.',
         },
       },
-      'required': <String>['signal_group_id', 'signal_uuid'],
+      'required': <String>['group_id', 'user_id'],
     },
     handler: (args) async {
-      final groupId = args['signal_group_id'] as String;
+      final groupId = args['group_id'] as String;
       final today = DateTime.now().toIso8601String().substring(0, 10);
 
       // Ensure a session exists for today.
       var session = queries.getActiveStandupSession(groupId, today);
       if (session == null) {
         queries.createStandupSession(
-          signalGroupId: groupId,
+          groupId: groupId,
           date: today,
         );
         session = queries.getActiveStandupSession(groupId, today);
@@ -180,8 +180,8 @@ CustomToolDef _submitStandupResponseTool(Queries queries) {
 
       queries.upsertStandupResponse(
         sessionId: session!.id,
-        signalUuid: args['signal_uuid'] as String,
-        signalDisplayName: args['signal_display_name'] as String?,
+        userId: args['user_id'] as String,
+        displayName: args['display_name'] as String?,
         yesterday: args['yesterday'] as String?,
         today: args['today'] as String?,
         blockers: args['blockers'] as String?,
@@ -204,9 +204,9 @@ CustomToolDef _getStandupSummaryTool(Queries queries) {
     inputSchema: const <String, dynamic>{
       'type': 'object',
       'properties': <String, dynamic>{
-        'signal_group_id': <String, dynamic>{
+        'group_id': <String, dynamic>{
           'type': 'string',
-          'description': 'The Signal group ID.',
+          'description': 'The group ID.',
         },
         'date': <String, dynamic>{
           'type': 'string',
@@ -214,10 +214,10 @@ CustomToolDef _getStandupSummaryTool(Queries queries) {
               'Date in YYYY-MM-DD format (default: today).',
         },
       },
-      'required': <String>['signal_group_id'],
+      'required': <String>['group_id'],
     },
     handler: (args) async {
-      final groupId = args['signal_group_id'] as String;
+      final groupId = args['group_id'] as String;
       final date = args['date'] as String? ??
           DateTime.now().toIso8601String().substring(0, 10);
 
@@ -238,8 +238,8 @@ CustomToolDef _getStandupSummaryTool(Queries queries) {
         'responses': <Map<String, dynamic>>[
           for (final r in responses)
             <String, dynamic>{
-              'signal_uuid': r.signalUuid,
-              'display_name': r.signalDisplayName,
+              'user_id': r.userId,
+              'display_name': r.displayName,
               'yesterday': r.yesterday,
               'today': r.today,
               'blockers': r.blockers,

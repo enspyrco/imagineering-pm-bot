@@ -70,7 +70,7 @@ String buildSystemPrompt(
       '- Sender: SYSTEM (scheduled task)'
     else
       '- Requesting user: ${input.senderName ?? "unknown"} '
-          '(UUID: ${input.senderUuid}) — '
+          '(ID: ${input.senderId}) — '
           '${input.isAdmin ? "ADMIN" : "member"}',
     '- Chat ID: ${input.chatId}',
     '',

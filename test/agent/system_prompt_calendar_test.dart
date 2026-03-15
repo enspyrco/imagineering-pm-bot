@@ -10,7 +10,7 @@ void main() {
     const input = AgentInput(
       text: 'What do we have coming up?',
       chatId: 'group-1',
-      senderUuid: 'user-1',
+      senderId: 'user-1',
       senderName: 'Nick',
       isAdmin: true,
     );
@@ -69,7 +69,7 @@ void main() {
       const systemInput = AgentInput(
         text: 'standup prompt',
         chatId: 'group-1',
-        senderUuid: 'system',
+        senderId: 'system',
         isAdmin: true,
         isSystemInitiated: true,
       );

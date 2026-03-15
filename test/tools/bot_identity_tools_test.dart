@@ -17,7 +17,7 @@ void main() {
     registry = ToolRegistry();
     // Set admin context so admin-gated tools pass.
     registry.setContext(const ToolContext(
-      senderUuid: 'test-admin',
+      senderId: 'test-admin',
       isAdmin: true,
       chatId: 'test-chat',
     ));
@@ -110,7 +110,7 @@ void main() {
 
     test('rejects non-admin callers', () async {
       registry.setContext(const ToolContext(
-        senderUuid: 'non-admin-user',
+        senderId: 'non-admin-user',
         isAdmin: false,
         chatId: 'test-chat',
       ));

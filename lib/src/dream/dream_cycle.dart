@@ -28,7 +28,7 @@ const defaultDeepRounds = 20;
 const defaultBranchRounds = 15;
 const defaultRemRounds = 15;
 
-/// Callback for sending a message to a Signal group.
+/// Callback for sending a message to a group chat.
 typedef DreamSendMessageFn = Future<void> Function(
   String groupId,
   String message,
@@ -117,7 +117,7 @@ class DreamCycle {
     required String date,
   }) async {
     final cycleId = queries.createDreamCycle(
-      signalGroupId: groupId,
+      groupId: groupId,
       date: date,
       triggeredByUuid: triggeredByUuid,
     );
@@ -324,7 +324,7 @@ class DreamCycle {
               'the message — like stretching awake and recounting how '
               'deep you slept.',
           chatId: groupId,
-          senderUuid: 'system',
+          senderId: 'system',
           isAdmin: true,
           isSystemInitiated: true,
         );
@@ -380,7 +380,7 @@ class DreamCycle {
 
     final chatId = 'dream::$groupId::${cycle.number}';
     toolRegistry.setContext(ToolContext(
-      senderUuid: 'system',
+      senderId: 'system',
       isAdmin: true,
       chatId: chatId,
       isGroup: false,
@@ -390,7 +390,7 @@ class DreamCycle {
       text: 'Begin ${cycle.label}. '
           '${_phaseInstruction(cycle)}',
       chatId: chatId,
-      senderUuid: 'system',
+      senderId: 'system',
       isAdmin: true,
       isSystemInitiated: false,
     );
@@ -421,7 +421,7 @@ class DreamCycle {
 
     final chatId = 'dream::$groupId::branch-$branchNumber';
     toolRegistry.setContext(ToolContext(
-      senderUuid: 'system',
+      senderId: 'system',
       isAdmin: true,
       chatId: chatId,
       isGroup: false,
@@ -431,7 +431,7 @@ class DreamCycle {
       text: 'You are dreaming about this spark: $spark\n\n'
           'Explore it fully. Follow where it leads.',
       chatId: chatId,
-      senderUuid: 'system',
+      senderId: 'system',
       isAdmin: true,
       isSystemInitiated: false,
     );
@@ -458,7 +458,7 @@ class DreamCycle {
 
     final chatId = 'dream::$groupId::rem';
     toolRegistry.setContext(ToolContext(
-      senderUuid: 'system',
+      senderId: 'system',
       isAdmin: true,
       chatId: chatId,
       isGroup: false,
@@ -468,7 +468,7 @@ class DreamCycle {
       text: 'Your dream threads are converging. Read all branch reports '
           'and synthesize your dream report.',
       chatId: chatId,
-      senderUuid: 'system',
+      senderId: 'system',
       isAdmin: true,
       isSystemInitiated: false,
     );

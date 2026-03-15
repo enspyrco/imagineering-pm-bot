@@ -12,13 +12,13 @@ mixin ReminderQueries {
   /// Returns the last reminder for a card/group/type combo, or `null`.
   SentReminder? getLastReminder(
     String cardPublicId,
-    String signalGroupId, {
+    String groupId, {
     ReminderType reminderType = ReminderType.overdue,
   }) {
     final rows = db.handle.select(
       'SELECT * FROM sent_reminders '
-      'WHERE card_public_id = ? AND signal_group_id = ? AND reminder_type = ?',
-      [cardPublicId, signalGroupId, reminderType.dbValue],
+      'WHERE card_public_id = ? AND group_id = ? AND reminder_type = ?',
+      [cardPublicId, groupId, reminderType.dbValue],
     );
     if (rows.isEmpty) return null;
     return _reminderFromRow(rows.first);
@@ -27,16 +27,16 @@ mixin ReminderQueries {
   /// Records or updates a reminder for the given card/group/type.
   void upsertReminder(
     String cardPublicId,
-    String signalGroupId, {
+    String groupId, {
     ReminderType reminderType = ReminderType.overdue,
   }) {
     db.handle.execute(
       'INSERT INTO sent_reminders '
-      '(card_public_id, signal_group_id, reminder_type, last_reminder_at) '
+      '(card_public_id, group_id, reminder_type, last_reminder_at) '
       "VALUES (?, ?, ?, datetime('now')) "
-      'ON CONFLICT(card_public_id, signal_group_id, reminder_type) DO UPDATE SET '
+      'ON CONFLICT(card_public_id, group_id, reminder_type) DO UPDATE SET '
       "last_reminder_at = datetime('now')",
-      [cardPublicId, signalGroupId, reminderType.dbValue],
+      [cardPublicId, groupId, reminderType.dbValue],
     );
   }
 
@@ -53,7 +53,7 @@ mixin ReminderQueries {
     return SentReminder(
       id: row['id']! as int,
       cardPublicId: row['card_public_id']! as String,
-      signalGroupId: row['signal_group_id']! as String,
+      groupId: row['group_id']! as String,
       reminderType: ReminderType.fromDb(row['reminder_type']! as String),
       lastReminderAt: row['last_reminder_at']! as String,
     );

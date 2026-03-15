@@ -21,7 +21,7 @@ class FakePipeline extends EmbeddingPipeline {
     required String chatId,
     required String userText,
     required String assistantText,
-    String? senderUuid,
+    String? senderId,
     String? senderName,
     MemoryVisibility visibility = MemoryVisibility.sameChat,
   }) {
@@ -29,7 +29,7 @@ class FakePipeline extends EmbeddingPipeline {
       chatId: chatId,
       userText: userText,
       assistantText: assistantText,
-      senderUuid: senderUuid,
+      senderId: senderId,
       senderName: senderName,
       visibility: visibility,
     ));
@@ -42,7 +42,7 @@ class QueueCall {
     required this.chatId,
     required this.userText,
     required this.assistantText,
-    this.senderUuid,
+    this.senderId,
     this.senderName,
     required this.visibility,
   });
@@ -50,7 +50,7 @@ class QueueCall {
   final String chatId;
   final String userText;
   final String assistantText;
-  final String? senderUuid;
+  final String? senderId;
   final String? senderName;
   final MemoryVisibility visibility;
 }
@@ -76,7 +76,7 @@ class NullQueries implements MemoryQueryAccessor {
     required String chatId,
     required MemorySourceType sourceType,
     required String sourceText,
-    String? senderUuid,
+    String? senderId,
     String? senderName,
     MemoryVisibility visibility = MemoryVisibility.sameChat,
     List<double>? embedding,

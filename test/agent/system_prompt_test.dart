@@ -9,7 +9,7 @@ void main() {
       const input = AgentInput(
         text: 'Send standup prompt',
         chatId: 'group-1',
-        senderUuid: 'system',
+        senderId: 'system',
         isAdmin: true,
         isSystemInitiated: true,
       );
@@ -26,7 +26,7 @@ void main() {
       const input = AgentInput(
         text: 'Hello',
         chatId: 'group-1',
-        senderUuid: 'user-1',
+        senderId: 'user-1',
         senderName: 'Alice',
         isAdmin: false,
       );
@@ -41,7 +41,7 @@ void main() {
       const input = AgentInput(
         text: 'Tell me about the Dawn Gate',
         chatId: 'group-1',
-        senderUuid: 'user-1',
+        senderId: 'user-1',
         senderName: 'Nick',
         isAdmin: true,
       );
@@ -73,7 +73,7 @@ void main() {
       const input = AgentInput(
         text: 'Hello',
         chatId: 'group-1',
-        senderUuid: 'user-1',
+        senderId: 'user-1',
         isAdmin: false,
       );
       final memories = [
@@ -98,7 +98,7 @@ void main() {
       const input = AgentInput(
         text: 'Hello',
         chatId: 'group-1',
-        senderUuid: 'user-1',
+        senderId: 'user-1',
         isAdmin: false,
       );
       final prompt = buildSystemPrompt(input);
@@ -109,7 +109,7 @@ void main() {
       const input = AgentInput(
         text: 'Hello',
         chatId: 'group-1',
-        senderUuid: 'user-1',
+        senderId: 'user-1',
         isAdmin: false,
       );
       final prompt = buildSystemPrompt(input);
@@ -121,7 +121,7 @@ void main() {
       const input = AgentInput(
         text: 'Hello',
         chatId: 'group-1',
-        senderUuid: 'user-1',
+        senderId: 'user-1',
         isAdmin: false,
       );
       final prompt = buildSystemPrompt(input);

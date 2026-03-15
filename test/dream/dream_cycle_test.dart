@@ -407,7 +407,7 @@ void main() {
 
     test('trigger returns false when already dreamed today', () {
       queries.createDreamCycle(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         date: '2026-03-14',
         triggeredByUuid: 'user-abc',
       );

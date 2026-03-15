@@ -4,9 +4,12 @@ import 'package:dotenv/dotenv.dart';
 class Env {
   Env._({
     this.anthropicApiKey,
-    required this.signalApiUrl,
-    required this.signalPhoneNumber,
     this.claudeRefreshToken,
+    required this.matrixHomeserver,
+    this.matrixAccessToken,
+    this.matrixUsername,
+    this.matrixPassword,
+    this.matrixIgnoreRooms = const [],
     this.kanBaseUrl,
     this.kanApiKey,
     this.outlineBaseUrl,
@@ -16,7 +19,7 @@ class Env {
     this.radicalePassword,
     this.calendarUrl,
     this.eventTimeZone,
-    this.adminUuids = const [],
+    this.adminIds = const [],
     this.kanMcpPath,
     this.botName = 'Dreamfinder',
     this.databasePath = './data/bot.db',
@@ -38,19 +41,28 @@ class Env {
         'Either ANTHROPIC_API_KEY or CLAUDE_REFRESH_TOKEN is required',
       );
     }
-    final signalApiUrl = dotEnv['SIGNAL_API_URL'];
-    if (signalApiUrl == null || signalApiUrl.isEmpty) {
-      throw StateError('SIGNAL_API_URL is required');
+    final matrixHomeserver = dotEnv['MATRIX_HOMESERVER'];
+    if (matrixHomeserver == null || matrixHomeserver.isEmpty) {
+      throw StateError('MATRIX_HOMESERVER is required');
     }
-    final signalPhoneNumber = dotEnv['SIGNAL_PHONE_NUMBER'];
-    if (signalPhoneNumber == null || signalPhoneNumber.isEmpty) {
-      throw StateError('SIGNAL_PHONE_NUMBER is required');
+    final matrixAccessToken = dotEnv['MATRIX_ACCESS_TOKEN'];
+    final matrixUsername = dotEnv['MATRIX_USERNAME'];
+    final matrixPassword = dotEnv['MATRIX_PASSWORD'];
+    if ((matrixAccessToken == null || matrixAccessToken.isEmpty) &&
+        (matrixUsername == null || matrixUsername.isEmpty)) {
+      throw StateError(
+        'Either MATRIX_ACCESS_TOKEN or MATRIX_USERNAME + MATRIX_PASSWORD '
+        'is required',
+      );
     }
     return Env._(
       anthropicApiKey: anthropicApiKey,
       claudeRefreshToken: claudeRefreshToken,
-      signalApiUrl: signalApiUrl,
-      signalPhoneNumber: signalPhoneNumber,
+      matrixHomeserver: matrixHomeserver,
+      matrixAccessToken: matrixAccessToken,
+      matrixUsername: matrixUsername,
+      matrixPassword: matrixPassword,
+      matrixIgnoreRooms: _parseList(dotEnv['MATRIX_IGNORE_ROOMS']),
       kanBaseUrl: dotEnv['KAN_BASE_URL'],
       kanApiKey: dotEnv['KAN_API_KEY'],
       outlineBaseUrl: dotEnv['OUTLINE_BASE_URL'],
@@ -60,7 +72,7 @@ class Env {
       radicalePassword: dotEnv['RADICALE_PASSWORD'],
       calendarUrl: dotEnv['CALENDAR_URL'],
       eventTimeZone: dotEnv['EVENT_TIMEZONE'],
-      adminUuids: _parseList(dotEnv['ADMIN_UUIDS']),
+      adminIds: _parseList(dotEnv['ADMIN_IDS'] ?? dotEnv['ADMIN_UUIDS']),
       kanMcpPath: dotEnv['KAN_MCP_PATH'],
       botName: dotEnv['BOT_NAME'] ?? 'Dreamfinder',
       databasePath: dotEnv['DATABASE_PATH'] ?? './data/bot.db',
@@ -76,8 +88,11 @@ class Env {
   factory Env.forTesting({
     String? anthropicApiKey = 'test-key',
     String? claudeRefreshToken,
-    String signalApiUrl = 'http://localhost:8080',
-    String signalPhoneNumber = '+1234567890',
+    String matrixHomeserver = 'https://matrix.test',
+    String? matrixAccessToken = 'test-token',
+    String? matrixUsername,
+    String? matrixPassword,
+    List<String> matrixIgnoreRooms = const [],
     String? kanBaseUrl,
     String? kanApiKey,
     String? outlineBaseUrl,
@@ -87,7 +102,7 @@ class Env {
     String? radicalePassword,
     String? calendarUrl,
     String? eventTimeZone,
-    List<String> adminUuids = const [],
+    List<String> adminIds = const [],
     String? kanMcpPath,
     String botName = 'Dreamfinder',
     String databasePath = './data/bot.db',
@@ -101,8 +116,11 @@ class Env {
       Env._(
         anthropicApiKey: anthropicApiKey,
         claudeRefreshToken: claudeRefreshToken,
-        signalApiUrl: signalApiUrl,
-        signalPhoneNumber: signalPhoneNumber,
+        matrixHomeserver: matrixHomeserver,
+        matrixAccessToken: matrixAccessToken,
+        matrixUsername: matrixUsername,
+        matrixPassword: matrixPassword,
+        matrixIgnoreRooms: matrixIgnoreRooms,
         kanBaseUrl: kanBaseUrl,
         kanApiKey: kanApiKey,
         outlineBaseUrl: outlineBaseUrl,
@@ -112,7 +130,7 @@ class Env {
         radicalePassword: radicalePassword,
         calendarUrl: calendarUrl,
         eventTimeZone: eventTimeZone,
-        adminUuids: adminUuids,
+        adminIds: adminIds,
         kanMcpPath: kanMcpPath,
         botName: botName,
         databasePath: databasePath,
@@ -134,8 +152,22 @@ class Env {
   bool get useOAuth =>
       claudeRefreshToken != null && claudeRefreshToken!.isNotEmpty;
 
-  final String signalApiUrl;
-  final String signalPhoneNumber;
+  /// Matrix homeserver URL (e.g., `https://matrix.imagineering.cc`).
+  final String matrixHomeserver;
+
+  /// Matrix access token (preferred for bots). If null, uses
+  /// [matrixUsername] + [matrixPassword] to login.
+  final String? matrixAccessToken;
+
+  /// Matrix username for password login (alternative to [matrixAccessToken]).
+  final String? matrixUsername;
+
+  /// Matrix password for password login.
+  final String? matrixPassword;
+
+  /// Room IDs to ignore (from `MATRIX_IGNORE_ROOMS`, comma-separated).
+  final List<String> matrixIgnoreRooms;
+
   final String? kanBaseUrl;
   final String? kanApiKey;
   final String? outlineBaseUrl;
@@ -153,8 +185,9 @@ class Env {
   /// `Australia/Melbourne`). If null, times are displayed in UTC.
   final String? eventTimeZone;
 
-  /// Signal UUIDs that have admin privileges (from `ADMIN_UUIDS` env var).
-  final List<String> adminUuids;
+  /// User IDs that have admin privileges (from `ADMIN_IDS` env var,
+  /// falls back to `ADMIN_UUIDS` for backward compatibility).
+  final List<String> adminIds;
 
   /// Path to the Kan MCP server entry point (from `KAN_MCP_PATH` env var).
   final String? kanMcpPath;
@@ -165,7 +198,7 @@ class Env {
   /// Port for the health check HTTP endpoint (from `HEALTH_PORT` env var).
   final int healthPort;
 
-  /// Signal group ID to send deploy announcements to.
+  /// Group/room ID to send deploy announcements to.
   /// If null, deploy announcements are disabled.
   final String? deployAnnounceGroupId;
 
@@ -181,9 +214,9 @@ class Env {
   /// Defaults to `imagineering-cc/dreamfinder` if not set.
   final String? githubRepo;
 
-  /// Returns `true` if [signalUuid] is in the configured admin list.
-  bool isAdmin(String? signalUuid) =>
-      signalUuid != null && adminUuids.contains(signalUuid);
+  /// Returns `true` if [userId] is in the configured admin list.
+  bool isAdmin(String? userId) =>
+      userId != null && adminIds.contains(userId);
 
   bool get kanEnabled => kanApiKey != null && kanApiKey!.isNotEmpty;
   bool get outlineEnabled => outlineApiKey != null && outlineApiKey!.isNotEmpty;

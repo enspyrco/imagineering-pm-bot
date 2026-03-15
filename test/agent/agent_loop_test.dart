@@ -29,7 +29,7 @@ void main() {
       );
       final result = await loop.processMessage(
         const AgentInput(
-            text: 'Hi', chatId: 'c1', senderUuid: 'u1', isAdmin: false),
+            text: 'Hi', chatId: 'c1', senderId: 'u1', isAdmin: false),
         systemPrompt: 'You are Dreamfinder.',
       );
       expect(result, equals('Hello! I am Dreamfinder.'));
@@ -73,7 +73,7 @@ void main() {
         const AgentInput(
             text: 'What time?',
             chatId: 'c1',
-            senderUuid: 'u1',
+            senderId: 'u1',
             isAdmin: false),
         systemPrompt: 'You are Dreamfinder.',
       );
@@ -129,7 +129,7 @@ void main() {
       );
       final result = await loop.processMessage(
         const AgentInput(
-            text: 'Do it', chatId: 'c1', senderUuid: 'u1', isAdmin: false),
+            text: 'Do it', chatId: 'c1', senderId: 'u1', isAdmin: false),
         systemPrompt: 'You are Dreamfinder.',
       );
       expect(callCount, equals(3));
@@ -171,7 +171,7 @@ void main() {
       );
       final result = await loop.processMessage(
         const AgentInput(
-            text: 'Use it', chatId: 'c1', senderUuid: 'u1', isAdmin: false),
+            text: 'Use it', chatId: 'c1', senderId: 'u1', isAdmin: false),
         systemPrompt: 'You are Dreamfinder.',
       );
       expect(result, contains('not working'));
@@ -205,7 +205,7 @@ void main() {
         const AgentInput(
           text: 'Send standup prompt',
           chatId: 'c1',
-          senderUuid: 'system',
+          senderId: 'system',
           isAdmin: true,
           isSystemInitiated: true,
         ),
@@ -241,7 +241,7 @@ void main() {
         const AgentInput(
           text: 'Hi',
           chatId: 'c1',
-          senderUuid: 'u1',
+          senderId: 'u1',
           isAdmin: false,
         ),
         systemPrompt: 'You are Dreamfinder.',
@@ -282,7 +282,7 @@ void main() {
       );
       final result = await loop.processMessage(
         const AgentInput(
-            text: 'Do it', chatId: 'c1', senderUuid: 'u1', isAdmin: false),
+            text: 'Do it', chatId: 'c1', senderId: 'u1', isAdmin: false),
         systemPrompt: 'You are Dreamfinder.',
         maxToolRounds: 2, // Override to 2.
       );
@@ -369,7 +369,7 @@ void main() {
         const AgentInput(
             text: 'Create a card called Test',
             chatId: 'c1',
-            senderUuid: 'u1',
+            senderId: 'u1',
             isAdmin: false),
         systemPrompt: 'You are Dreamfinder.',
       );
@@ -379,7 +379,7 @@ void main() {
         const AgentInput(
             text: 'Now assign it to Paul',
             chatId: 'c1',
-            senderUuid: 'u1',
+            senderId: 'u1',
             isAdmin: false),
         systemPrompt: 'You are Dreamfinder.',
       );

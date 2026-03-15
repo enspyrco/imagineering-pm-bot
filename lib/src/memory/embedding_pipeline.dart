@@ -27,7 +27,7 @@ const _minSourceLength = 10;
 ///   chatId: 'group-123',
 ///   userText: 'What is the Dawn Gate?',
 ///   assistantText: 'The Dawn Gate is an emoji gateway...',
-///   senderUuid: 'abc-123',
+///   senderId: 'abc-123',
 ///   senderName: 'Nick',
 /// );
 /// ```
@@ -61,7 +61,7 @@ class EmbeddingPipeline {
     required String chatId,
     required String userText,
     required String assistantText,
-    String? senderUuid,
+    String? senderId,
     String? senderName,
     MemoryVisibility visibility = MemoryVisibility.sameChat,
   }) {
@@ -81,7 +81,7 @@ class EmbeddingPipeline {
       chatId: chatId,
       sourceType: MemorySourceType.message,
       sourceText: sourceText,
-      senderUuid: senderUuid,
+      senderId: senderId,
       senderName: senderName,
       visibility: visibility,
     );
@@ -122,7 +122,7 @@ abstract class MemoryQueryAccessor {
     required String chatId,
     required MemorySourceType sourceType,
     required String sourceText,
-    String? senderUuid,
+    String? senderId,
     String? senderName,
     MemoryVisibility visibility,
     List<double>? embedding,

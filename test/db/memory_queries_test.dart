@@ -30,7 +30,7 @@ void main() {
         chatId: 'group-1',
         sourceType: MemorySourceType.message,
         sourceText: 'Test conversation text',
-        senderUuid: 'uuid-1',
+        senderId: 'uuid-1',
         senderName: 'Nick',
       );
 

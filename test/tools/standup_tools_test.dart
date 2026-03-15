@@ -29,7 +29,7 @@ void main() {
     bool isAdmin = true,
   }) async {
     registry.setContext(ToolContext(
-      senderUuid: 'uuid-sender',
+      senderId: 'uuid-sender',
       isAdmin: isAdmin,
       chatId: 'group-1',
     ));
@@ -40,7 +40,7 @@ void main() {
   group('configure_standup', () {
     test('creates default config for a group', () async {
       final result = await call('configure_standup', {
-        'signal_group_id': 'group-1',
+        'group_id': 'group-1',
       });
       expect(result['success'], isTrue);
 
@@ -53,11 +53,11 @@ void main() {
 
     test('updates existing config with partial fields', () async {
       await call('configure_standup', {
-        'signal_group_id': 'group-1',
+        'group_id': 'group-1',
       });
 
       final result = await call('configure_standup', {
-        'signal_group_id': 'group-1',
+        'group_id': 'group-1',
         'prompt_hour': 8,
         'summary_hour': 16,
         'timezone': 'US/Pacific',
@@ -72,11 +72,11 @@ void main() {
 
     test('can disable standup', () async {
       await call('configure_standup', {
-        'signal_group_id': 'group-1',
+        'group_id': 'group-1',
       });
 
       final result = await call('configure_standup', {
-        'signal_group_id': 'group-1',
+        'group_id': 'group-1',
         'enabled': false,
       });
       expect(result['success'], isTrue);
@@ -88,7 +88,7 @@ void main() {
     test('rejects non-admin callers', () async {
       final result = await call(
         'configure_standup',
-        {'signal_group_id': 'group-1'},
+        {'group_id': 'group-1'},
         isAdmin: false,
       );
       expect(result['error'], contains('admin'));
@@ -98,21 +98,21 @@ void main() {
   group('get_standup_config', () {
     test('returns null fields when no config exists', () async {
       final result = await call('get_standup_config', {
-        'signal_group_id': 'group-1',
+        'group_id': 'group-1',
       });
       expect(result['configured'], isFalse);
     });
 
     test('returns config when it exists', () async {
       queries.upsertStandupConfig(
-        signalGroupId: 'group-1',
+        groupId: 'group-1',
         promptHour: 10,
         summaryHour: 18,
         timezone: 'US/Eastern',
       );
 
       final result = await call('get_standup_config', {
-        'signal_group_id': 'group-1',
+        'group_id': 'group-1',
       });
       expect(result['configured'], isTrue);
       expect(result['prompt_hour'], equals(10));
@@ -124,12 +124,12 @@ void main() {
   group('submit_standup_response', () {
     test('creates a session and records response', () async {
       // Configure standup first.
-      queries.upsertStandupConfig(signalGroupId: 'group-1');
+      queries.upsertStandupConfig(groupId: 'group-1');
 
       final result = await call('submit_standup_response', {
-        'signal_group_id': 'group-1',
-        'signal_uuid': 'uuid-alice',
-        'signal_display_name': 'Alice',
+        'group_id': 'group-1',
+        'user_id': 'uuid-alice',
+        'display_name': 'Alice',
         'yesterday': 'Finished the login flow',
         'today': 'Starting dashboard',
         'blockers': 'None',
@@ -148,18 +148,18 @@ void main() {
     });
 
     test('updates existing response from same user', () async {
-      queries.upsertStandupConfig(signalGroupId: 'group-1');
+      queries.upsertStandupConfig(groupId: 'group-1');
 
       await call('submit_standup_response', {
-        'signal_group_id': 'group-1',
-        'signal_uuid': 'uuid-alice',
+        'group_id': 'group-1',
+        'user_id': 'uuid-alice',
         'yesterday': 'Original',
         'today': 'Original',
       });
 
       await call('submit_standup_response', {
-        'signal_group_id': 'group-1',
-        'signal_uuid': 'uuid-alice',
+        'group_id': 'group-1',
+        'user_id': 'uuid-alice',
         'yesterday': 'Updated',
         'today': 'Updated',
       });
@@ -175,34 +175,34 @@ void main() {
   group('get_standup_summary', () {
     test('returns empty when no session exists', () async {
       final result = await call('get_standup_summary', {
-        'signal_group_id': 'group-1',
+        'group_id': 'group-1',
       });
       expect(result['has_session'], isFalse);
     });
 
     test('returns all responses for today', () async {
-      queries.upsertStandupConfig(signalGroupId: 'group-1');
+      queries.upsertStandupConfig(groupId: 'group-1');
 
       // Submit two responses.
       await call('submit_standup_response', {
-        'signal_group_id': 'group-1',
-        'signal_uuid': 'uuid-alice',
-        'signal_display_name': 'Alice',
+        'group_id': 'group-1',
+        'user_id': 'uuid-alice',
+        'display_name': 'Alice',
         'yesterday': 'Login flow',
         'today': 'Dashboard',
       });
 
       await call('submit_standup_response', {
-        'signal_group_id': 'group-1',
-        'signal_uuid': 'uuid-bob',
-        'signal_display_name': 'Bob',
+        'group_id': 'group-1',
+        'user_id': 'uuid-bob',
+        'display_name': 'Bob',
         'yesterday': 'API tests',
         'today': 'Deployment',
         'blockers': 'Need staging access',
       });
 
       final result = await call('get_standup_summary', {
-        'signal_group_id': 'group-1',
+        'group_id': 'group-1',
       });
       expect(result['has_session'], isTrue);
       expect(result['response_count'], equals(2));

@@ -5,8 +5,7 @@
 /// 2. **Per-group window**: limits total bot responses in a group within a
 ///    time window, regardless of sender.
 ///
-/// DMs (chatId starting with '+') bypass the group throttle but still
-/// respect per-user cooldown.
+/// DMs bypass the group throttle but still respect per-user cooldown.
 library;
 
 /// Rate limiter for incoming bot messages.
@@ -26,7 +25,7 @@ class RateLimiter {
   /// Maximum bot responses in a group within [perGroupWindow].
   final int maxGroupMessages;
 
-  /// Tracks the last message timestamp per user (keyed by senderUuid).
+  /// Tracks the last message timestamp per user (keyed by senderId).
   final Map<String, DateTime> _userLastMessage = {};
 
   /// Tracks message timestamps per group for window-based throttling.
@@ -36,18 +35,18 @@ class RateLimiter {
   /// rate-limited.
   bool shouldAllow({
     required String chatId,
-    required String senderUuid,
+    required String senderId,
+    bool isDm = false,
   }) {
     final now = DateTime.now();
 
     // Per-user cooldown check.
-    final lastMessage = _userLastMessage[senderUuid];
+    final lastMessage = _userLastMessage[senderId];
     if (lastMessage != null && now.difference(lastMessage) < perUserCooldown) {
       return false;
     }
 
     // Per-group window check (skip for DMs).
-    final isDm = chatId.startsWith('+');
     if (!isDm) {
       final timestamps = _groupMessages.putIfAbsent(chatId, () => []);
 
@@ -61,7 +60,7 @@ class RateLimiter {
       timestamps.add(now);
     }
 
-    _userLastMessage[senderUuid] = now;
+    _userLastMessage[senderId] = now;
     return true;
   }
 

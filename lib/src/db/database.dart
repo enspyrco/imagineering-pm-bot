@@ -2,7 +2,7 @@ import 'package:sqlite3/sqlite3.dart';
 
 /// Current schema version. Bump this and add a migration block in
 /// [_runMigrations] whenever the schema changes.
-const schemaVersion = 5;
+const schemaVersion = 6;
 
 /// SQLite database wrapper for Dreamfinder.
 ///
@@ -90,6 +90,7 @@ class BotDatabase {
     if (fromVersion < 3) _migrateToV3();
     if (fromVersion < 4) _migrateToV4();
     if (fromVersion < 5) _migrateToV5();
+    if (fromVersion < 6) _migrateToV6();
 
     _setVersion(schemaVersion);
   }
@@ -137,9 +138,9 @@ class BotDatabase {
     // --- Domain tables ---
 
     _db.execute('''
-      CREATE TABLE IF NOT EXISTS signal_workspace_links (
+      CREATE TABLE IF NOT EXISTS workspace_links (
         id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-        signal_group_id     TEXT    NOT NULL UNIQUE,
+        group_id            TEXT    NOT NULL UNIQUE,
         workspace_public_id TEXT    NOT NULL,
         workspace_name      TEXT    NOT NULL,
         created_at          TEXT    NOT NULL DEFAULT (datetime('now')),
@@ -148,10 +149,10 @@ class BotDatabase {
     ''');
 
     _db.execute('''
-      CREATE TABLE IF NOT EXISTS signal_user_links (
+      CREATE TABLE IF NOT EXISTS user_links (
         id                         INTEGER PRIMARY KEY AUTOINCREMENT,
-        signal_uuid                TEXT    NOT NULL UNIQUE,
-        signal_display_name        TEXT,
+        user_id                    TEXT    NOT NULL UNIQUE,
+        display_name               TEXT,
         kan_user_email             TEXT    NOT NULL,
         workspace_member_public_id TEXT,
         created_at                 TEXT    NOT NULL DEFAULT (datetime('now')),
@@ -163,10 +164,10 @@ class BotDatabase {
       CREATE TABLE IF NOT EXISTS sent_reminders (
         id               INTEGER PRIMARY KEY AUTOINCREMENT,
         card_public_id   TEXT    NOT NULL,
-        signal_group_id  TEXT    NOT NULL,
+        group_id         TEXT    NOT NULL,
         reminder_type    TEXT    NOT NULL DEFAULT 'overdue',
         last_reminder_at TEXT    NOT NULL,
-        UNIQUE(card_public_id, signal_group_id, reminder_type)
+        UNIQUE(card_public_id, group_id, reminder_type)
       )
     ''');
 
@@ -185,7 +186,7 @@ class BotDatabase {
     _db.execute('''
       CREATE TABLE IF NOT EXISTS default_board_config (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        signal_group_id TEXT    NOT NULL UNIQUE,
+        group_id        TEXT    NOT NULL UNIQUE,
         board_public_id TEXT    NOT NULL,
         list_public_id  TEXT    NOT NULL,
         board_name      TEXT    NOT NULL,
@@ -207,7 +208,7 @@ class BotDatabase {
     _db.execute('''
       CREATE TABLE IF NOT EXISTS standup_config (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        signal_group_id TEXT    NOT NULL UNIQUE,
+        group_id        TEXT    NOT NULL UNIQUE,
         enabled         INTEGER NOT NULL DEFAULT 1,
         prompt_hour     INTEGER NOT NULL DEFAULT 9,
         summary_hour    INTEGER NOT NULL DEFAULT 17,
@@ -221,27 +222,27 @@ class BotDatabase {
     _db.execute('''
       CREATE TABLE IF NOT EXISTS standup_sessions (
         id                 INTEGER PRIMARY KEY AUTOINCREMENT,
-        signal_group_id    TEXT    NOT NULL,
+        group_id           TEXT    NOT NULL,
         date               TEXT    NOT NULL,
         prompt_message_id  TEXT,
         summary_message_id TEXT,
         status             TEXT    NOT NULL DEFAULT 'active',
         nudged_at          INTEGER,
-        UNIQUE(signal_group_id, date)
+        UNIQUE(group_id, date)
       )
     ''');
 
     _db.execute('''
       CREATE TABLE IF NOT EXISTS standup_responses (
-        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-        session_id          INTEGER NOT NULL REFERENCES standup_sessions(id),
-        signal_uuid         TEXT    NOT NULL,
-        signal_display_name TEXT,
-        yesterday           TEXT,
-        today               TEXT,
-        blockers            TEXT,
-        raw_message         TEXT,
-        UNIQUE(session_id, signal_uuid)
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id   INTEGER NOT NULL REFERENCES standup_sessions(id),
+        user_id      TEXT    NOT NULL,
+        display_name TEXT,
+        yesterday    TEXT,
+        today        TEXT,
+        blockers     TEXT,
+        raw_message  TEXT,
+        UNIQUE(session_id, user_id)
       )
     ''');
 
@@ -249,10 +250,10 @@ class BotDatabase {
       CREATE TABLE IF NOT EXISTS calendar_reminders (
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
         event_uid       TEXT    NOT NULL,
-        signal_group_id TEXT    NOT NULL,
+        group_id        TEXT    NOT NULL,
         reminder_window TEXT    NOT NULL,
         sent_at         TEXT    NOT NULL,
-        UNIQUE(event_uid, signal_group_id, reminder_window)
+        UNIQUE(event_uid, group_id, reminder_window)
       )
     ''');
   }
@@ -338,7 +339,7 @@ class BotDatabase {
     _db.execute('''
       CREATE TABLE IF NOT EXISTS dream_cycles (
         id                INTEGER PRIMARY KEY AUTOINCREMENT,
-        signal_group_id   TEXT    NOT NULL,
+        group_id          TEXT    NOT NULL,
         date              TEXT    NOT NULL,
         status            TEXT    NOT NULL DEFAULT 'dreaming'
                           CHECK (status IN ('dreaming', 'completed', 'failed')),
@@ -346,8 +347,90 @@ class BotDatabase {
         started_at        TEXT    NOT NULL DEFAULT (datetime('now')),
         completed_at      TEXT,
         error_message     TEXT,
-        UNIQUE(signal_group_id, date)
+        UNIQUE(group_id, date)
       )
     ''');
+  }
+
+  /// Version 6: platform-agnostic rename — removes "signal" prefix from table
+  /// and column names to support Matrix and future platforms.
+  ///
+  /// Uses `ALTER TABLE RENAME TO` and `ALTER TABLE RENAME COLUMN` (SQLite 3.25+,
+  /// metadata-only operations — no data is rewritten).
+  ///
+  /// On fresh databases, V1 already creates tables with new names, so we skip
+  /// the renames if the old tables don't exist.
+  void _migrateToV6() {
+    // Check if old tables exist — skip renames on fresh databases.
+    final oldTables = _db
+        .select(
+          "SELECT name FROM sqlite_master WHERE type = 'table' "
+          "AND name IN ('signal_workspace_links', 'signal_user_links')",
+        )
+        .map((r) => r['name'] as String)
+        .toSet();
+    if (oldTables.isEmpty) return;
+
+    // Table renames.
+    _db.execute(
+      'ALTER TABLE signal_workspace_links RENAME TO workspace_links',
+    );
+    _db.execute(
+      'ALTER TABLE signal_user_links RENAME TO user_links',
+    );
+
+    // Column renames: workspace_links.
+    _db.execute(
+      'ALTER TABLE workspace_links RENAME COLUMN signal_group_id TO group_id',
+    );
+
+    // Column renames: user_links.
+    _db.execute(
+      'ALTER TABLE user_links RENAME COLUMN signal_uuid TO user_id',
+    );
+    _db.execute(
+      'ALTER TABLE user_links RENAME COLUMN signal_display_name TO display_name',
+    );
+
+    // Column renames: sent_reminders.
+    _db.execute(
+      'ALTER TABLE sent_reminders RENAME COLUMN signal_group_id TO group_id',
+    );
+
+    // Column renames: default_board_config.
+    _db.execute(
+      'ALTER TABLE default_board_config '
+      'RENAME COLUMN signal_group_id TO group_id',
+    );
+
+    // Column renames: standup_config.
+    _db.execute(
+      'ALTER TABLE standup_config RENAME COLUMN signal_group_id TO group_id',
+    );
+
+    // Column renames: standup_sessions.
+    _db.execute(
+      'ALTER TABLE standup_sessions RENAME COLUMN signal_group_id TO group_id',
+    );
+
+    // Column renames: standup_responses.
+    _db.execute(
+      'ALTER TABLE standup_responses RENAME COLUMN signal_uuid TO user_id',
+    );
+    _db.execute(
+      'ALTER TABLE standup_responses '
+      'RENAME COLUMN signal_display_name TO display_name',
+    );
+
+    // Column renames: calendar_reminders.
+    _db.execute(
+      'ALTER TABLE calendar_reminders '
+      'RENAME COLUMN signal_group_id TO group_id',
+    );
+
+    // Column renames: dream_cycles.
+    _db.execute(
+      'ALTER TABLE dream_cycles RENAME COLUMN signal_group_id TO group_id',
+    );
   }
 }
