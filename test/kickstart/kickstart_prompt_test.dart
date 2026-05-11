@@ -57,7 +57,9 @@ void main() {
         KickstartStep.meetAndGreet,
         groupId,
       );
-      expect(section, contains('coffee chat'));
+      // Round-the-room framing: each person introduces themselves, warm vibe,
+      // not an interrogation.
+      expect(section, contains('round of intros'));
       expect(section, contains('not a form'));
     });
 
@@ -126,12 +128,13 @@ void main() {
       }
     });
 
-    test('header mentions DM-based setup', () {
+    test('header frames setup as in-room, not DM', () {
       final section = buildKickstartPromptSection(
         KickstartStep.workspace,
         groupId,
       );
-      expect(section, contains('via DM'));
+      expect(section, contains('in their group room'));
+      expect(section, isNot(contains('via DM')));
     });
 
     test('primer step mentions post_kickstart_summary', () {

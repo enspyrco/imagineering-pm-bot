@@ -19,7 +19,8 @@ String buildKickstartPromptSection(KickstartStep step, String groupId) {
   final total = KickstartStep.values.length;
   final header =
       '\n## Kickstart — Step ${step.number} of $total: ${step.label}\n\n'
-      'You are guiding this user through setup via DM. '
+      'You are guiding this team through setup *in their group room*. '
+      'Anyone present can answer — work with whoever speaks up. '
       'The group\'s `group_id` is `$groupId` — use it for all tool calls. '
       'This is a guided conversation — ask questions, use tools, '
       'and advance when the step is complete.\n\n';
@@ -68,12 +69,14 @@ String _workspacePrompt(String groupId) => '''
 **Tools**: `get_chat_config`, `set_chat_config`, `kan_list_workspaces`, `kan_list_boards`''';
 
 String _meetAndGreetPrompt(String groupId) => '''
-**Goal**: Get to know this user and save their profile as a CardDAV contact.
+**Goal**: Go around the room. Get to know each person here and save a CardDAV
+contact per speaker.
 
-This is a personal, conversational step — you're building a relationship.
-Be warm and curious, not interrogative. Share a little about yourself too.
+This runs in the group room, so make it feel like a round of intros at a
+gathering — warm, curious, one person at a time, not a form to fill out.
+Share a little about yourself too. Invite whoever hasn't spoken yet.
 
-**What to ask about** (naturally, not as a checklist):
+**What to ask each person about** (naturally, not as a checklist):
 - What they'd like to be called (name / nickname)
 - Their timezone (so you can be mindful of when you reach out)
 - Their role on the team
@@ -81,23 +84,29 @@ Be warm and curious, not interrogative. Share a little about yourself too.
 - Anything else they'd like you to know about them
 - How much context they're comfortable having you remember
 
-**Storing the profile**:
+**Pacing**: After each person, briefly acknowledge what you heard and then
+invite the next person — "Anyone else want to introduce themselves?" When the
+room goes quiet or someone says "that's everyone" / "done" / "next", advance.
+
+**Storing each profile**:
 Use the address book `$kickstartAddressBook`.
 First, try `radicale_list_address_books` to check if it exists.
 If not, create it with `radicale_create_address_book` (name: "Team Profiles").
 
-Then create a contact with `radicale_create_contact`:
+For *each* person who introduces themselves, create a contact with
+`radicale_create_contact`:
 - `address_book`: `$kickstartAddressBook`
 - `full_name`: their preferred name
 - `nickname`: if they mention one
 - `note`: a brief profile summary including role, interests, and preferences
 - `timezone`: their IANA timezone (e.g., "Australia/Melbourne")
 
-If the contact already exists (from a previous kickstart), update it with
-`radicale_update_contact` instead.
+Use the speaker's chat identity (their bridged display name / MXID) to
+distinguish profiles. If a contact already exists (from a previous kickstart),
+update it with `radicale_update_contact` instead.
 
-**Tone**: This should feel like a first coffee chat, not a form to fill out.
-Let the conversation flow naturally and collect details as they come up.
+**Tone**: A round of intros at a first meetup, not interrogation. Let people
+volunteer; don't drag answers out of anyone.
 
 **Tools**: `radicale_list_address_books`, `radicale_create_address_book`, `radicale_create_contact`, `radicale_update_contact`, `radicale_list_contacts`''';
 
