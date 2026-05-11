@@ -13,6 +13,7 @@ class MatrixEvent {
     required this.type,
     required this.originServerTs,
     required this.content,
+    this.prevContent,
   });
 
   /// Parses a timeline event from the `/sync` response JSON.
@@ -25,6 +26,8 @@ class MatrixEvent {
     Map<String, dynamic> json, {
     required String roomId,
   }) {
+    final unsigned = json['unsigned'] as Map<String, dynamic>?;
+    final prevContent = unsigned?['prev_content'] as Map<String, dynamic>?;
     return MatrixEvent(
       eventId: json['event_id'] as String? ?? '',
       roomId: roomId,
@@ -32,6 +35,7 @@ class MatrixEvent {
       type: json['type'] as String? ?? '',
       originServerTs: json['origin_server_ts'] as int? ?? 0,
       content: json['content'] as Map<String, dynamic>? ?? const {},
+      prevContent: prevContent,
     );
   }
 
@@ -52,6 +56,13 @@ class MatrixEvent {
   /// Event content — structure depends on [type].
   final Map<String, dynamic> content;
 
+  /// Previous state content from `unsigned.prev_content` (state events only).
+  ///
+  /// For `m.room.member` events, this lets us distinguish a real join
+  /// (prev membership != `join`) from a profile update (prev membership ==
+  /// `join`, just a displayname/avatar change re-emitting the membership).
+  final Map<String, dynamic>? prevContent;
+
   /// Plain text body for `m.room.message` events.
   String? get body => content['body'] as String?;
 
@@ -65,10 +76,19 @@ class MatrixEvent {
   bool get hasTextMessage =>
       type == 'm.room.message' && msgType == 'm.text' && body != null;
 
-  /// Whether this event is a member joining a room.
-  bool get isMemberJoin =>
-      type == 'm.room.member' &&
-      (content['membership'] as String?) == 'join';
+  /// Whether this event is a member *newly* joining a room.
+  ///
+  /// Returns `false` for profile updates (displayname/avatar changes), which
+  /// Matrix re-emits as `m.room.member` events with `membership: join` even
+  /// though the user was already a member. A real join has either no
+  /// `prev_content` or a previous membership of `leave`, `invite`, `ban`,
+  /// or `knock`.
+  bool get isMemberJoin {
+    if (type != 'm.room.member') return false;
+    if ((content['membership'] as String?) != 'join') return false;
+    final prevMembership = prevContent?['membership'] as String?;
+    return prevMembership != 'join';
+  }
 
   /// Display name from a membership event (e.g., the joining user's name).
   String? get memberDisplayName => content['displayname'] as String?;

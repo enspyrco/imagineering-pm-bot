@@ -467,5 +467,59 @@ void main() {
       );
       expect(event.isMemberJoin, isFalse);
     });
+
+    test('isMemberJoin is false for displayname-update re-emit', () {
+      // Matrix re-emits m.room.member with membership=join when a user
+      // changes their displayname or avatar. prev_content.membership=join
+      // signals "already a member, just a profile update".
+      final event = MatrixEvent(
+        eventId: '\$1',
+        roomId: '!r:t',
+        sender: '@existing:t',
+        type: 'm.room.member',
+        originServerTs: 0,
+        content: const {
+          'membership': 'join',
+          'displayname': 'New Name',
+        },
+        prevContent: const {
+          'membership': 'join',
+          'displayname': 'Old Name',
+        },
+      );
+      expect(event.isMemberJoin, isFalse);
+    });
+
+    test('isMemberJoin is true for join after leave (rejoin)', () {
+      final event = MatrixEvent(
+        eventId: '\$1',
+        roomId: '!r:t',
+        sender: '@rejoiner:t',
+        type: 'm.room.member',
+        originServerTs: 0,
+        content: const {'membership': 'join'},
+        prevContent: const {'membership': 'leave'},
+      );
+      expect(event.isMemberJoin, isTrue);
+    });
+
+    test('fromJson extracts prev_content from unsigned wrapper', () {
+      final event = MatrixEvent.fromJson(
+        const {
+          'event_id': '\$1',
+          'sender': '@u:t',
+          'type': 'm.room.member',
+          'origin_server_ts': 0,
+          'content': {'membership': 'join', 'displayname': 'After'},
+          'unsigned': {
+            'prev_content': {'membership': 'join', 'displayname': 'Before'},
+          },
+        },
+        roomId: '!r:t',
+      );
+      expect(event.prevContent, isNotNull);
+      expect(event.prevContent!['membership'], 'join');
+      expect(event.isMemberJoin, isFalse);
+    });
   });
 }

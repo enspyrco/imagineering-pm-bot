@@ -783,7 +783,10 @@ Future<void> main() async {
               : <CalendarEvent>[];
 
           // Detect kickstart triggers — any group member + trigger phrase.
-          // Redirect to DMs: ack in group, then run agent loop in DM room.
+          // Onboarding runs in the group room itself: workspace/roster/projects/
+          // knowledge are inherently team-shared, and Meet & Greet becomes a
+          // round-the-room intro. Bridged platforms carry per-user identity via
+          // puppet MXIDs, so state keyed by sender works in public just fine.
           if (isGroup &&
               isKickstartMessage(text) &&
               !kickstartState.isKickstartActive(event.roomId)) {
@@ -791,20 +794,13 @@ Future<void> main() async {
               event.roomId,
               initiatorUuid: event.sender,
             );
-            log.info('Kickstart started (DM flow)', extra: {
+            log.info('Kickstart started (in-room flow)', extra: {
               'room': event.roomId,
               'sender': event.sender,
             });
-            await matrixClient.sendMessage(
-              roomId: event.roomId,
-              message: "Send me a DM to get started! I'll walk you through "
-                  'setting everything up. ✨',
-            );
-            // The user DMs Dreamfinder on their platform (Signal, Telegram,
-            // Discord, etc.). The bridge relays it to Matrix as a DM, and
-            // the kickstart state (keyed by sender) picks up the flow.
-            health.recordMessageDropped('kickstart_dm_redirect');
-            continue;
+            // Don't `continue` — let the agent loop run with the kickstart
+            // system prompt injected below, so the first response opens the
+            // workspace step right here in the group.
           }
 
           // Detect session triggers — group-only, no DM redirect.
