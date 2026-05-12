@@ -38,7 +38,7 @@ void main() {
       );
 
       // Manually trigger tick — no configs means no work.
-      await scheduler.tick(DateTime(2026, 3, 2, 9, 0));
+      await scheduler.tick(DateTime.utc(2026, 3, 1, 22, 0));
     });
   });
 
@@ -58,7 +58,7 @@ void main() {
       );
 
       // 9:00 AM — prompt hour.
-      await scheduler.tick(DateTime(2026, 3, 2, 9, 0));
+      await scheduler.tick(DateTime.utc(2026, 3, 1, 22, 0));
 
       expect(sentMessages, hasLength(1));
       expect(sentMessages.first.key, equals('group-1'));
@@ -80,11 +80,11 @@ void main() {
       );
 
       // First tick creates the session and sends the prompt.
-      await scheduler.tick(DateTime(2026, 3, 2, 9, 0));
+      await scheduler.tick(DateTime.utc(2026, 3, 1, 22, 0));
       expect(sentMessages, hasLength(1));
 
       // Second tick at same hour — should not re-send.
-      await scheduler.tick(DateTime(2026, 3, 2, 9, 30));
+      await scheduler.tick(DateTime.utc(2026, 3, 1, 22, 30));
       expect(sentMessages, hasLength(1));
     });
 
@@ -102,7 +102,7 @@ void main() {
         },
       );
 
-      await scheduler.tick(DateTime(2026, 3, 2, 9, 0));
+      await scheduler.tick(DateTime.utc(2026, 3, 1, 22, 0));
       expect(sentMessages, isEmpty);
     });
 
@@ -122,7 +122,7 @@ void main() {
       );
 
       // Saturday March 7, 2026.
-      await scheduler.tick(DateTime(2026, 3, 7, 9, 0));
+      await scheduler.tick(DateTime.utc(2026, 3, 6, 22, 0));
       expect(sentMessages, isEmpty);
     });
   });
@@ -145,7 +145,7 @@ void main() {
         },
       );
 
-      await scheduler.tick(DateTime(2026, 3, 2, 9, 0));
+      await scheduler.tick(DateTime.utc(2026, 3, 1, 22, 0));
 
       expect(sentMessages, hasLength(1));
       expect(
@@ -173,7 +173,7 @@ void main() {
         },
       );
 
-      await scheduler.tick(DateTime(2026, 3, 2, 9, 0));
+      await scheduler.tick(DateTime.utc(2026, 3, 1, 22, 0));
 
       expect(sentMessages, hasLength(1));
       expect(
@@ -202,7 +202,7 @@ void main() {
         },
       );
 
-      await scheduler.tick(DateTime(2026, 3, 2, 9, 0));
+      await scheduler.tick(DateTime.utc(2026, 3, 1, 22, 0));
 
       expect(sentMessages, hasLength(1));
       expect(
@@ -224,7 +224,7 @@ void main() {
         // No composeViaAgent provided.
       );
 
-      await scheduler.tick(DateTime(2026, 3, 2, 9, 0));
+      await scheduler.tick(DateTime.utc(2026, 3, 1, 22, 0));
 
       expect(sentMessages, hasLength(1));
       expect(
@@ -275,7 +275,7 @@ void main() {
       );
 
       // Tick at 3:15 AM — should trigger cleanup.
-      await scheduler.tick(DateTime(2026, 3, 2, 3, 15));
+      await scheduler.tick(DateTime.utc(2026, 3, 1, 16, 15));
       expect(queries.getLastReminder('card-old', 'group-1'), isNull);
 
       // Insert new old data.
@@ -286,11 +286,11 @@ void main() {
       );
 
       // Tick again same day at 4 AM — should NOT re-run cleanup.
-      await scheduler.tick(DateTime(2026, 3, 2, 4, 0));
+      await scheduler.tick(DateTime.utc(2026, 3, 1, 17, 0));
       expect(queries.getLastReminder('card-old-2', 'group-1'), isNotNull);
 
       // Tick next day at 3:00 AM — should trigger cleanup again.
-      await scheduler.tick(DateTime(2026, 3, 3, 3, 0));
+      await scheduler.tick(DateTime.utc(2026, 3, 2, 16, 0));
       expect(queries.getLastReminder('card-old-2', 'group-1'), isNull);
     });
 
@@ -325,7 +325,7 @@ void main() {
       );
 
       // Tick at 3:15 AM — cleanup window.
-      await scheduler.tick(DateTime(2026, 3, 2, 3, 15));
+      await scheduler.tick(DateTime.utc(2026, 3, 1, 16, 15));
 
       expect(consolidateCalled, isTrue);
     });
@@ -338,7 +338,7 @@ void main() {
       );
 
       // Should not throw.
-      await scheduler.tick(DateTime(2026, 3, 2, 3, 15));
+      await scheduler.tick(DateTime.utc(2026, 3, 1, 16, 15));
     });
 
     test('does not call consolidate before 3 AM', () async {
@@ -376,7 +376,7 @@ void main() {
         consolidator: consolidator,
       );
 
-      await scheduler.tick(DateTime(2026, 3, 2, 3, 15));
+      await scheduler.tick(DateTime.utc(2026, 3, 1, 16, 15));
 
       expect(callOrder, equals(['backfill', 'consolidate']));
     });
@@ -394,7 +394,7 @@ void main() {
         consolidator: consolidator,
       );
 
-      await scheduler.tick(DateTime(2026, 3, 2, 3, 15));
+      await scheduler.tick(DateTime.utc(2026, 3, 1, 16, 15));
 
       // Consolidator should still run.
       expect(consolidateCalled, isTrue);
@@ -413,7 +413,7 @@ void main() {
       await Scheduler(
         queries: queries,
         sendMessage: (groupId, message) async {},
-      ).tick(DateTime(2026, 3, 2, 9, 0));
+      ).tick(DateTime.utc(2026, 3, 1, 22, 0));
 
       final session = queries.getActiveStandupSession('group-1', '2026-03-02');
       queries.upsertStandupResponse(
@@ -439,7 +439,7 @@ void main() {
       );
 
       // 5 PM — summary hour.
-      await scheduler.tick(DateTime(2026, 3, 2, 17, 0));
+      await scheduler.tick(DateTime.utc(2026, 3, 2, 6, 0));
 
       expect(composedTasks, hasLength(1));
       expect(composedTasks.first.key, 'group-1');
@@ -477,7 +477,7 @@ void main() {
         },
       );
 
-      await scheduler.tick(DateTime(2026, 3, 2, 17, 0));
+      await scheduler.tick(DateTime.utc(2026, 3, 2, 6, 0));
       expect(composeCalled, isFalse);
     });
 
@@ -499,7 +499,7 @@ void main() {
       );
 
       // 5 PM but no prompt was sent this morning — no session to summarize.
-      await scheduler.tick(DateTime(2026, 3, 2, 17, 0));
+      await scheduler.tick(DateTime.utc(2026, 3, 2, 6, 0));
       expect(composeCalled, isFalse);
     });
 
@@ -523,7 +523,7 @@ void main() {
         },
       );
 
-      await scheduler.tick(DateTime(2026, 3, 2, 17, 0));
+      await scheduler.tick(DateTime.utc(2026, 3, 2, 6, 0));
       expect(composeCalled, isFalse);
     });
 
@@ -553,7 +553,7 @@ void main() {
         // No composeViaAgent.
       );
 
-      await scheduler.tick(DateTime(2026, 3, 2, 17, 0));
+      await scheduler.tick(DateTime.utc(2026, 3, 2, 6, 0));
 
       // Should send a hardcoded summary with the response data.
       expect(sentMessages, hasLength(1));
@@ -600,7 +600,7 @@ void main() {
         },
       );
 
-      await scheduler.tick(DateTime(2026, 3, 2, 17, 0));
+      await scheduler.tick(DateTime.utc(2026, 3, 2, 6, 0));
 
       expect(taskDesc, contains('Alice'));
       expect(taskDesc, contains('Bob'));
@@ -637,7 +637,7 @@ void main() {
       );
 
       // Tick at 3 AM to trigger daily cleanup + digest.
-      await scheduler.tick(DateTime(2026, 3, 2, 3, 15));
+      await scheduler.tick(DateTime.utc(2026, 3, 1, 16, 15));
 
       expect(composedTasks, hasLength(1));
       expect(composedTasks.first.key, 'room-1');
@@ -670,7 +670,7 @@ void main() {
         },
       );
 
-      await scheduler.tick(DateTime(2026, 3, 2, 3, 15));
+      await scheduler.tick(DateTime.utc(2026, 3, 1, 16, 15));
 
       expect(composedChats, containsAll(['room-1', 'room-2']));
     });
@@ -687,7 +687,7 @@ void main() {
         },
       );
 
-      await scheduler.tick(DateTime(2026, 3, 2, 3, 15));
+      await scheduler.tick(DateTime.utc(2026, 3, 1, 16, 15));
 
       expect(composeCalled, isFalse);
     });
@@ -709,7 +709,7 @@ void main() {
         // No composeViaAgent — digest should be skipped.
       );
 
-      await scheduler.tick(DateTime(2026, 3, 2, 3, 15));
+      await scheduler.tick(DateTime.utc(2026, 3, 1, 16, 15));
 
       // Only cleanup runs, no digest message sent.
       expect(sentMessages, isEmpty);
@@ -742,7 +742,7 @@ void main() {
       );
 
       // 2 PM — nudge hour.
-      await scheduler.tick(DateTime(2026, 3, 2, 14, 0));
+      await scheduler.tick(DateTime.utc(2026, 3, 2, 3, 0));
 
       expect(
         composedTasks.where((e) => e.value.contains('overdue')),
@@ -772,7 +772,7 @@ void main() {
         },
       );
 
-      await scheduler.tick(DateTime(2026, 3, 2, 14, 0));
+      await scheduler.tick(DateTime.utc(2026, 3, 2, 3, 0));
       expect(nudgeCalled, isFalse);
     });
 
@@ -797,11 +797,11 @@ void main() {
       );
 
       // First tick at 2 PM — nudge fires.
-      await scheduler.tick(DateTime(2026, 3, 2, 14, 0));
+      await scheduler.tick(DateTime.utc(2026, 3, 2, 3, 0));
       expect(nudgeCount, equals(1));
 
       // Second tick same hour — should NOT re-nudge (dedup via bot_metadata).
-      await scheduler.tick(DateTime(2026, 3, 2, 14, 30));
+      await scheduler.tick(DateTime.utc(2026, 3, 2, 3, 30));
       expect(nudgeCount, equals(1));
     });
 
@@ -823,7 +823,7 @@ void main() {
         },
       );
 
-      await scheduler.tick(DateTime(2026, 3, 2, 14, 0));
+      await scheduler.tick(DateTime.utc(2026, 3, 2, 3, 0));
       expect(sentMessages, isEmpty);
     });
 
@@ -846,7 +846,7 @@ void main() {
       );
 
       // Should not throw.
-      await scheduler.tick(DateTime(2026, 3, 2, 14, 0));
+      await scheduler.tick(DateTime.utc(2026, 3, 2, 3, 0));
     });
   });
 
@@ -873,7 +873,7 @@ void main() {
         random: Random(42),
       );
 
-      final base = DateTime(2026, 3, 2, 10, 0); // 10 AM — waking hours.
+      final base = DateTime.utc(2026, 3, 1, 23, 0); // 10 AM — waking hours.
 
       // First tick initializes next-scan time (30-90 min out). No scan yet.
       await scheduler.tick(base);
@@ -901,8 +901,8 @@ void main() {
         },
       );
 
-      await scheduler.tick(DateTime(2026, 3, 2, 10, 0));
-      await scheduler.tick(DateTime(2026, 3, 2, 14, 0));
+      await scheduler.tick(DateTime.utc(2026, 3, 1, 23, 0));
+      await scheduler.tick(DateTime.utc(2026, 3, 2, 3, 0));
       expect(radarCalled, isFalse);
     });
 
@@ -924,8 +924,8 @@ void main() {
       );
 
       // 5 AM — quiet hours.
-      await scheduler.tick(DateTime(2026, 3, 2, 5, 0));
-      await scheduler.tick(DateTime(2026, 3, 2, 5, 30));
+      await scheduler.tick(DateTime.utc(2026, 3, 1, 18, 0));
+      await scheduler.tick(DateTime.utc(2026, 3, 1, 18, 30));
       expect(radarCalled, isFalse);
     });
 
@@ -947,7 +947,7 @@ void main() {
       );
 
       // 11 PM — quiet hours.
-      await scheduler.tick(DateTime(2026, 3, 2, 23, 0));
+      await scheduler.tick(DateTime.utc(2026, 3, 2, 12, 0));
       expect(radarCalled, isFalse);
     });
 
@@ -969,7 +969,7 @@ void main() {
         random: Random(42),
       );
 
-      final base = DateTime(2026, 3, 2, 10, 0);
+      final base = DateTime.utc(2026, 3, 1, 23, 0);
 
       // First tick: initializes. Second tick 2h later: fires.
       await scheduler.tick(base);
@@ -1000,7 +1000,7 @@ void main() {
         random: Random(42),
       );
 
-      final base = DateTime(2026, 3, 2, 10, 0);
+      final base = DateTime.utc(2026, 3, 1, 23, 0);
       await scheduler.tick(base);
       await scheduler.tick(base.add(const Duration(hours: 2)));
       expect(sentMessages, isEmpty);
@@ -1022,7 +1022,7 @@ void main() {
         random: Random(42),
       );
 
-      final base = DateTime(2026, 3, 2, 10, 0);
+      final base = DateTime.utc(2026, 3, 1, 23, 0);
       await scheduler.tick(base);
       // Should not throw.
       await scheduler.tick(base.add(const Duration(hours: 2)));
@@ -1044,7 +1044,7 @@ void main() {
         random: Random(42),
       );
 
-      final base = DateTime(2026, 3, 2, 10, 0);
+      final base = DateTime.utc(2026, 3, 1, 23, 0);
       await scheduler.tick(base);
       await scheduler.tick(base.add(const Duration(hours: 2)));
       expect(sentMessages, isEmpty);
@@ -1074,7 +1074,7 @@ void main() {
         random: Random(42),
       );
 
-      final base = DateTime(2026, 3, 2, 10, 0);
+      final base = DateTime.utc(2026, 3, 1, 23, 0);
       await scheduler.tick(base);
       await scheduler.tick(base.add(const Duration(hours: 2)));
       expect(capturedDescription, contains('Imagineering'));
@@ -1100,7 +1100,7 @@ void main() {
         composeWithTools: compose,
         random: Random(42),
       );
-      final base = DateTime(2026, 3, 2, 10, 0);
+      final base = DateTime.utc(2026, 3, 1, 23, 0);
       await s1.tick(base);
       await s1.tick(base.add(const Duration(hours: 2)));
       expect(radarCount, equals(1));
@@ -1152,7 +1152,7 @@ void main() {
       );
 
       // Tick at 3:15 AM — cleanup window.
-      await scheduler.tick(DateTime(2026, 3, 2, 3, 15));
+      await scheduler.tick(DateTime.utc(2026, 3, 1, 16, 15));
 
       expect(triggeredGroups, containsAll(['room-1', 'room-2']));
     });
@@ -1179,7 +1179,7 @@ void main() {
         },
       );
 
-      await scheduler.tick(DateTime(2026, 3, 2, 3, 15));
+      await scheduler.tick(DateTime.utc(2026, 3, 1, 16, 15));
 
       expect(capturedTriggeredBy, equals('scheduler'));
     });
@@ -1227,7 +1227,7 @@ void main() {
       );
 
       // Should not throw.
-      await scheduler.tick(DateTime(2026, 3, 2, 3, 15));
+      await scheduler.tick(DateTime.utc(2026, 3, 1, 16, 15));
     });
 
     test('does not trigger when no workspace links exist', () async {
@@ -1245,7 +1245,7 @@ void main() {
         },
       );
 
-      await scheduler.tick(DateTime(2026, 3, 2, 3, 15));
+      await scheduler.tick(DateTime.utc(2026, 3, 1, 16, 15));
 
       expect(triggered, isFalse);
     });

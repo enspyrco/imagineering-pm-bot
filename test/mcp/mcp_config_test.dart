@@ -33,7 +33,7 @@ void main() {
           'name': 'test-server',
           'command': 'node',
           'args': ['server.js'],
-          'env': {},
+          'env': <String, String>{},
         },
       ]);
 
@@ -51,13 +51,13 @@ void main() {
           'name': 'enabled',
           'command': 'node',
           'args': ['a.js'],
-          'env': {},
+          'env': <String, String>{},
         },
         {
           'name': 'disabled',
           'command': 'node',
           'args': ['b.js'],
-          'env': {},
+          'env': <String, String>{},
           'enabled': false,
         },
       ]);
@@ -143,13 +143,13 @@ void main() {
           'name': 'server-a',
           'command': 'node',
           'args': ['a.js'],
-          'env': {},
+          'env': <String, String>{},
         },
         {
           'name': 'server-b',
           'command': 'python',
           'args': ['b.py', '--port', '8080'],
-          'env': {},
+          'env': <String, String>{},
         },
       ]);
 
@@ -167,7 +167,7 @@ void main() {
           'name': 'no-enabled-field',
           'command': 'node',
           'args': ['server.js'],
-          'env': {},
+          'env': <String, String>{},
         },
       ]);
 
