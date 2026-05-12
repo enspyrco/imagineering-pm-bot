@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 import 'package:dreamfinder/src/signal/models.dart';
 import 'package:dreamfinder/src/signal/signal_client.dart';
+import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
@@ -69,8 +69,7 @@ void main() {
 
     test('sendMessage to group uses group ID', () async {
       // Mock the listGroups endpoint that loadGroupMappings calls on cache miss.
-      when(() => mockClient.get(
-              Uri.parse('$baseUrl/v1/groups/$phoneNumber')))
+      when(() => mockClient.get(Uri.parse('$baseUrl/v1/groups/$phoneNumber')))
           .thenAnswer((_) async => http.Response(
                 jsonEncode([
                   {
@@ -93,7 +92,8 @@ void main() {
     });
 
     test('receiveMessages returns list of envelopes', () async {
-      when(() => mockClient.get(Uri.parse('$baseUrl/v1/receive/$phoneNumber?timeout=10')))
+      when(() => mockClient
+              .get(Uri.parse('$baseUrl/v1/receive/$phoneNumber?timeout=10')))
           .thenAnswer((_) async => http.Response(
                 jsonEncode([
                   {
@@ -145,8 +145,7 @@ void main() {
 
     test('sendTypingIndicator to group uses group ID', () async {
       // Mock the listGroups endpoint that loadGroupMappings calls on cache miss.
-      when(() => mockClient.get(
-              Uri.parse('$baseUrl/v1/groups/$phoneNumber')))
+      when(() => mockClient.get(Uri.parse('$baseUrl/v1/groups/$phoneNumber')))
           .thenAnswer((_) async => http.Response(
                 jsonEncode([
                   {
@@ -169,7 +168,8 @@ void main() {
           Uri.parse('$baseUrl/v1/typing-indicator/$phoneNumber'),
           headers: any(named: 'headers'),
           body: captureAny(named: 'body'))).captured;
-      final body = jsonDecode(captured.single as String) as Map<String, dynamic>;
+      final body =
+          jsonDecode(captured.single as String) as Map<String, dynamic>;
       expect(body['recipient'], equals('group.abc123=='));
     });
   });

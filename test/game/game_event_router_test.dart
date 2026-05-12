@@ -32,7 +32,7 @@ void main() {
   late int port;
 
   setUpAll(() {
-    registerFallbackValue(AgentInput(
+    registerFallbackValue(const AgentInput(
       text: '',
       chatId: '',
       senderId: '',
@@ -86,7 +86,7 @@ void main() {
 
   tearDown(() async {
     httpClient.close();
-    health.stop();
+    await health.stop();
     db.close();
   });
 
@@ -292,8 +292,7 @@ void main() {
 
       await Future<void>.delayed(const Duration(milliseconds: 500));
 
-      final participants =
-          sessionState.getParticipants('game:tech-world');
+      final participants = sessionState.getParticipants('game:tech-world');
       expect(participants, contains('user-2'));
     });
   });

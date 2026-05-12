@@ -1,11 +1,11 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 import 'package:dreamfinder/src/agent/agent_loop.dart';
 import 'package:dreamfinder/src/agent/conversation_history.dart';
 import 'package:dreamfinder/src/agent/tool_registry.dart';
 import 'package:dreamfinder/src/mcp/mcp_manager.dart';
 import 'package:dreamfinder/src/signal/signal_client.dart';
+import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
@@ -23,8 +23,8 @@ void main() {
         phoneNumber: '+1234567890',
         client: mockHttp);
 
-    when(() => mockHttp
-            .get(Uri.parse('http://localhost:8080/v1/receive/+1234567890?timeout=10')))
+    when(() => mockHttp.get(Uri.parse(
+            'http://localhost:8080/v1/receive/+1234567890?timeout=10')))
         .thenAnswer((_) async => http.Response(
             jsonEncode([
               {

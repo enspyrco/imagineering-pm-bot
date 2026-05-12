@@ -191,8 +191,7 @@ void main() {
       expect(capturedRequest, isNotNull);
       expect(capturedRequest!.method, 'PUT');
 
-      final body =
-          jsonDecode(capturedRequest!.body) as Map<String, dynamic>;
+      final body = jsonDecode(capturedRequest!.body) as Map<String, dynamic>;
       expect(body['msgtype'], 'm.text');
       expect(body['body'], 'Hello\nWorld');
       expect(body['formatted_body'], contains('<br/>'));
@@ -217,8 +216,7 @@ void main() {
         message: '**bold** and *italic* and `code`',
       );
 
-      final body =
-          jsonDecode(capturedRequest!.body) as Map<String, dynamic>;
+      final body = jsonDecode(capturedRequest!.body) as Map<String, dynamic>;
       final html = body['formatted_body'] as String;
       expect(html, contains('<strong>bold</strong>'));
       expect(html, contains('<em>italic</em>'));
@@ -245,8 +243,7 @@ void main() {
       expect(capturedRequest, isNotNull);
       expect(capturedRequest!.method, 'POST');
 
-      final body =
-          jsonDecode(capturedRequest!.body) as Map<String, dynamic>;
+      final body = jsonDecode(capturedRequest!.body) as Map<String, dynamic>;
       expect(body['is_direct'], isTrue);
       expect(body['invite'], contains('@user:test'));
       expect(body['preset'], 'trusted_private_chat');
@@ -290,8 +287,7 @@ void main() {
       expect(capturedRequest, isNotNull);
       expect(capturedRequest!.method, 'PUT');
 
-      final body =
-          jsonDecode(capturedRequest!.body) as Map<String, dynamic>;
+      final body = jsonDecode(capturedRequest!.body) as Map<String, dynamic>;
       expect(body['typing'], isTrue);
     });
 
@@ -379,8 +375,7 @@ void main() {
     // The client therefore drops timeline events from the parsed response when
     // `since` is null, preventing historical member-join events from triggering
     // spurious welcome messages.
-    test(
-        'initial sync suppresses timeline events even if server returns them',
+    test('initial sync suppresses timeline events even if server returns them',
         () async {
       // Simulate a homeserver that ignores the filter and returns a member-join
       // event from history (e.g., a user who joined 2 hours before the bot started).
@@ -425,7 +420,8 @@ void main() {
       expect(
         result.events,
         isEmpty,
-        reason: 'Historical joins from initial sync must not reach the welcome handler',
+        reason:
+            'Historical joins from initial sync must not reach the welcome handler',
       );
 
       // Member counts are still parsed (needed for DM detection).
@@ -489,7 +485,7 @@ void main() {
       );
 
       expect(
-        () => client.whoAmI(),
+        client.whoAmI,
         throwsA(isA<MatrixApiException>()),
       );
     });
@@ -514,37 +510,37 @@ void main() {
 
   group('MatrixEvent', () {
     test('hasTextMessage is false for non-text events', () {
-      final event = MatrixEvent(
+      final event = const MatrixEvent(
         eventId: '\$1',
         roomId: '!r:t',
         sender: '@u:t',
         type: 'm.room.member',
         originServerTs: 0,
-        content: const {'membership': 'join'},
+        content: {'membership': 'join'},
       );
       expect(event.hasTextMessage, isFalse);
     });
 
     test('hasTextMessage is false for image messages', () {
-      final event = MatrixEvent(
+      final event = const MatrixEvent(
         eventId: '\$1',
         roomId: '!r:t',
         sender: '@u:t',
         type: 'm.room.message',
         originServerTs: 0,
-        content: const {'msgtype': 'm.image', 'body': 'photo.jpg'},
+        content: {'msgtype': 'm.image', 'body': 'photo.jpg'},
       );
       expect(event.hasTextMessage, isFalse);
     });
 
     test('isMemberJoin is true for join membership events', () {
-      final event = MatrixEvent(
+      final event = const MatrixEvent(
         eventId: '\$1',
         roomId: '!r:t',
         sender: '@newuser:t',
         type: 'm.room.member',
         originServerTs: 0,
-        content: const {
+        content: {
           'membership': 'join',
           'displayname': 'New User',
         },
@@ -554,25 +550,25 @@ void main() {
     });
 
     test('isMemberJoin is false for leave events', () {
-      final event = MatrixEvent(
+      final event = const MatrixEvent(
         eventId: '\$1',
         roomId: '!r:t',
         sender: '@leaving:t',
         type: 'm.room.member',
         originServerTs: 0,
-        content: const {'membership': 'leave'},
+        content: {'membership': 'leave'},
       );
       expect(event.isMemberJoin, isFalse);
     });
 
     test('isMemberJoin is false for text messages', () {
-      final event = MatrixEvent(
+      final event = const MatrixEvent(
         eventId: '\$1',
         roomId: '!r:t',
         sender: '@u:t',
         type: 'm.room.message',
         originServerTs: 0,
-        content: const {'msgtype': 'm.text', 'body': 'hello'},
+        content: {'msgtype': 'm.text', 'body': 'hello'},
       );
       expect(event.isMemberJoin, isFalse);
     });
@@ -581,17 +577,17 @@ void main() {
       // Matrix re-emits m.room.member with membership=join when a user
       // changes their displayname or avatar. prev_content.membership=join
       // signals "already a member, just a profile update".
-      final event = MatrixEvent(
+      final event = const MatrixEvent(
         eventId: '\$1',
         roomId: '!r:t',
         sender: '@existing:t',
         type: 'm.room.member',
         originServerTs: 0,
-        content: const {
+        content: {
           'membership': 'join',
           'displayname': 'New Name',
         },
-        prevContent: const {
+        prevContent: {
           'membership': 'join',
           'displayname': 'Old Name',
         },
@@ -600,14 +596,14 @@ void main() {
     });
 
     test('isMemberJoin is true for join after leave (rejoin)', () {
-      final event = MatrixEvent(
+      final event = const MatrixEvent(
         eventId: '\$1',
         roomId: '!r:t',
         sender: '@rejoiner:t',
         type: 'm.room.member',
         originServerTs: 0,
-        content: const {'membership': 'join'},
-        prevContent: const {'membership': 'leave'},
+        content: {'membership': 'join'},
+        prevContent: {'membership': 'leave'},
       );
       expect(event.isMemberJoin, isTrue);
     });

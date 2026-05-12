@@ -243,6 +243,7 @@ void main() {
     test('timers for different groups are independent', () {
       final firedGroups = <String>[];
       final callbacks = <String, void Function()>{};
+      // ignore: omit_local_variable_types — explicit type needed; var infers Null Function() from () {}, breaking the subsequent assignment of void Function().
       void Function() lastCallback = () {};
 
       final timer = SessionTimer(

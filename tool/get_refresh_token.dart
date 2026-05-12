@@ -11,6 +11,9 @@
 ///
 /// After running, Claude Code's token will be invalidated — run `/login` in
 /// Claude Code to re-authenticate.
+// ignore_for_file: avoid_print — this is a developer CLI tool; stdout is its UI.
+library;
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -74,7 +77,8 @@ void main() async {
     print('Token exchange failed (${response.statusCode}):');
     print(response.body);
     print('');
-    print('If the token was already used, run /login in Claude Code and retry.');
+    print(
+        'If the token was already used, run /login in Claude Code and retry.');
     exit(1);
   }
 

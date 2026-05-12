@@ -45,10 +45,10 @@ void main() {
 
     test('uses custom identity', () {
       final prompt = buildDreamCyclePrompt(
-        context: DreamContext(
+        context: const DreamContext(
           botName: 'Dreamfinder',
           groupId: 'group-1',
-          identity: const BotIdentityRecord(
+          identity: BotIdentityRecord(
             id: 1,
             name: 'Figment',
             pronouns: 'he/him',
@@ -77,7 +77,7 @@ void main() {
           senderName: 'Alice',
           createdAt: '2026-03-14T10:00:00',
         ),
-        PersistedMessage(
+        const PersistedMessage(
           id: 2,
           chatId: 'group-1',
           role: MessageRole.user,
@@ -241,9 +241,11 @@ void main() {
 
       expect(tasks, hasLength(2));
       expect(tasks[0].type, equals(DreamTaskType.triage));
-      expect(tasks[0].description, equals('Update overdue cards on Sprint board'));
+      expect(
+          tasks[0].description, equals('Update overdue cards on Sprint board'));
       expect(tasks[1].type, equals(DreamTaskType.prep));
-      expect(tasks[1].description, equals('Prepare for tomorrow standup meeting'));
+      expect(
+          tasks[1].description, equals('Prepare for tomorrow standup meeting'));
     });
 
     test('caps at maxDreamBranches', () {

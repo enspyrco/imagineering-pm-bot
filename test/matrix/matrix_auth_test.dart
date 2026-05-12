@@ -41,8 +41,7 @@ void main() {
       expect(token, 'login-token');
 
       // Verify login request body.
-      final body =
-          jsonDecode(capturedRequest!.body) as Map<String, dynamic>;
+      final body = jsonDecode(capturedRequest!.body) as Map<String, dynamic>;
       expect(body['type'], 'm.login.password');
       expect(
         (body['identifier'] as Map<String, dynamic>)['user'],
@@ -80,7 +79,7 @@ void main() {
       final auth = MatrixAuth(homeserver: homeserver);
 
       expect(
-        () => auth.getAccessToken(),
+        auth.getAccessToken,
         throwsA(isA<StateError>()),
       );
     });
@@ -101,7 +100,7 @@ void main() {
       );
 
       expect(
-        () => auth.getAccessToken(),
+        auth.getAccessToken,
         throwsA(isA<MatrixAuthException>()),
       );
     });
