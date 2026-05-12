@@ -103,7 +103,7 @@ language.
 - Timezone-aware prompt scheduling (per-group IANA timezone config)
 - Proactive task nudges — overdue and stale Kan cards flagged daily at configurable hour
 - User identity mapping (platform user ID to Kan.bn user)
-- Auto-onboard — welcomes new members joining rooms and invites them to DM for setup
+- Auto-onboard — welcomes new members joining rooms and invites them to say "kickstart" for in-room setup
 
 ### Bot Intelligence
 
@@ -157,7 +157,7 @@ Pitch → Build 1 → Chat 1 → Build 2 → Chat 2 → Build 3 → Chat 3 → D
 5. **Dream Primer** — Summarize setup and introduce the dream cycle
 6. **First Nudge** — Demonstrate proactive task awareness
 
-Users DM Dreamfinder to onboard — the bridge can't initiate DMs to native platforms.
+Say "kickstart" in the group room and River walks the team through setup in-room. No DM required (PR #84).
 
 ### Repo Radar
 

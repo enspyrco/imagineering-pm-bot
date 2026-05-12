@@ -1,4 +1,7 @@
-/// Kickstart detection — identifies trigger phrases for guided onboarding.
+/// Kickstart detection — identifies trigger phrases for in-room guided onboarding.
+///
+/// When detected in a group room, River walks the team through the full setup
+/// sequence in-room (PR #84). No DM required.
 ///
 /// Matches natural language phrases like "let's set up", "kickstart",
 /// "get started", "onboard", etc. Case-insensitive with word boundaries.
