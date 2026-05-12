@@ -790,10 +790,7 @@ Future<void> main() async {
           if (isGroup &&
               isKickstartMessage(text) &&
               !kickstartState.isKickstartActive(event.roomId)) {
-            kickstartState.startKickstart(
-              event.roomId,
-              initiatorUuid: event.sender,
-            );
+            kickstartState.startKickstart(event.roomId);
             log.info('Kickstart started (in-room flow)', extra: {
               'room': event.roomId,
               'sender': event.sender,
@@ -1125,21 +1122,12 @@ String _buildFullSystemPrompt({
     trackedRepos: trackedRepos,
   );
 
-  // Kickstart prompt injection — check group key or DM reverse-lookup.
-  KickstartStep? kickstartStep;
-  String? kickstartGroupId;
-
+  // Kickstart prompt injection — group-only (kickstart runs in-room).
   if (isGroup) {
-    kickstartStep = kickstartState.getActiveKickstart(chatId);
-    kickstartGroupId = chatId;
-  } else {
-    final info = kickstartState.getKickstartForUser(senderId);
-    kickstartStep = info?.step;
-    kickstartGroupId = info?.groupId;
-  }
-
-  if (kickstartStep != null && kickstartGroupId != null) {
-    prompt += buildKickstartPromptSection(kickstartStep, kickstartGroupId);
+    final kickstartStep = kickstartState.getActiveKickstart(chatId);
+    if (kickstartStep != null) {
+      prompt += buildKickstartPromptSection(kickstartStep, chatId);
+    }
   }
 
   // Session prompt injection — group-only (no DM sessions).

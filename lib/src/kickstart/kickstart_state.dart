@@ -3,7 +3,7 @@
 /// Uses the `bot_metadata` key-value table (via [MetadataQueries]) to track
 /// which step of the kickstart flow each group is on. Keys follow the pattern
 /// `kickstart::<groupId>` with a JSON value containing the step number and
-/// timestamp.
+/// timestamp. Kickstart runs in-room (group only) — no DM path.
 library;
 
 import 'dart:convert';
@@ -42,10 +42,8 @@ enum KickstartStep {
 
 /// Manages kickstart state for group chats via the `bot_metadata` table.
 ///
-/// Uses a dual-key lookup so DMs can be correlated back to the originating
-/// group:
-/// - `kickstart::<groupId>` → `{step, startedAt, initiatorUuid}`
-/// - `kickstart-dm::<userUuid>` → `{groupId}` (reverse lookup)
+/// Uses a single key per group:
+/// - `kickstart::<groupId>` → `{step, startedAt}`
 class KickstartState {
   KickstartState({required this.queries});
 
@@ -53,9 +51,6 @@ class KickstartState {
 
   /// Returns the metadata key for a given group.
   static String _key(String groupId) => 'kickstart::$groupId';
-
-  /// Returns the reverse-lookup key for a user's DM.
-  static String _dmKey(String initiatorUuid) => 'kickstart-dm::$initiatorUuid';
 
   /// Returns the active kickstart step for [groupId], or `null` if no
   /// kickstart is in progress.
@@ -76,46 +71,18 @@ class KickstartState {
 
   /// Starts a new kickstart for [groupId] at step 1 (Workspace Setup).
   ///
-  /// The [initiatorUuid] is stored so DMs from this user can be routed back to
-  /// the correct group's kickstart flow.
-  ///
   /// If a kickstart is already active, this is a no-op and returns `false`.
   /// Returns `true` if the kickstart was started.
-  bool startKickstart(String groupId, {required String initiatorUuid}) {
+  bool startKickstart(String groupId) {
     if (isKickstartActive(groupId)) return false;
 
     final payload = jsonEncode(<String, dynamic>{
       'step': KickstartStep.workspace.number,
       'startedAt': DateTime.now().toUtc().toIso8601String(),
-      'initiatorUuid': initiatorUuid,
     });
     queries.setMetadata(_key(groupId), payload);
 
-    // Reverse-lookup key so DMs can find the group.
-    final dmPayload = jsonEncode(<String, dynamic>{'groupId': groupId});
-    queries.setMetadata(_dmKey(initiatorUuid), dmPayload);
-
     return true;
-  }
-
-  /// Returns the group ID and current step for a user's active kickstart,
-  /// or `null` if this user has no active kickstart.
-  ///
-  /// Used by the message loop to detect DMs from users mid-kickstart.
-  ({String groupId, KickstartStep step})? getKickstartForUser(
-    String initiatorUuid,
-  ) {
-    final dmJson = queries.getMetadata(_dmKey(initiatorUuid));
-    if (dmJson == null) return null;
-
-    final dmMap = jsonDecode(dmJson) as Map<String, dynamic>;
-    final groupId = dmMap['groupId'] as String?;
-    if (groupId == null) return null;
-
-    final step = getActiveKickstart(groupId);
-    if (step == null) return null;
-
-    return (groupId: groupId, step: step);
   }
 
   /// Advances the kickstart for [groupId] to the next step.
@@ -141,26 +108,9 @@ class KickstartState {
 
   /// Marks the kickstart for [groupId] as complete by removing the state.
   ///
-  /// Clears both the group key and the user's DM reverse-lookup key.
+  /// MetadataQueries has no delete, so this stores a completed marker
+  /// (step: null) that [getActiveKickstart] ignores.
   void completeKickstart(String groupId) {
-    // Read the initiatorUuid before clearing so we can remove the DM key.
-    final json = queries.getMetadata(_key(groupId));
-    if (json != null) {
-      final map = jsonDecode(json) as Map<String, dynamic>;
-      final initiatorUuid = map['initiatorUuid'] as String?;
-      if (initiatorUuid != null) {
-        // Clear the reverse-lookup key. MetadataQueries has no delete, so
-        // store a completed marker that getKickstartForUser ignores (the
-        // group key's step will be null → getActiveKickstart returns null).
-        final dmPayload = jsonEncode(<String, dynamic>{
-          'groupId': groupId,
-          'completedAt': DateTime.now().toUtc().toIso8601String(),
-        });
-        queries.setMetadata(_dmKey(initiatorUuid), dmPayload);
-      }
-    }
-
-    // Store a completed marker that getActiveKickstart ignores.
     final payload = jsonEncode(<String, dynamic>{
       'step': null,
       'completedAt': DateTime.now().toUtc().toIso8601String(),
