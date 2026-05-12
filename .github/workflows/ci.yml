@@ -40,10 +40,9 @@ jobs:
         run: dart pub get
 
       - name: Analyze
-        # --fatal-warnings is enabled; --fatal-infos is intentionally omitted
-        # because the codebase has pre-existing info-level style lints in
-        # tool/ and bin/ that are tracked separately (not blocking issues).
-        run: dart analyze --fatal-warnings
+        # --fatal-infos: every lint (info, warning, error) is a build failure.
+        # The codebase is clean at this level — no new info lints will accumulate.
+        run: dart analyze --fatal-infos
 
       - name: Test
         run: dart test
