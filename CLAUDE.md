@@ -1,10 +1,10 @@
 # Dreamfinder
 
 > See [README.md](README.md) for full project documentation, architecture diagrams,
-> Signal integration details, MCP integration details, and deployment guide.
+> MCP integration details, and deployment guide.
 
-**Dreamfinder** is a chat-based PM bot for the Imagineering org, migrating from Signal
-to Matrix. Every message flows through a Claude agent loop with access to MCP tools
+**Dreamfinder** is a chat-based PM bot for the Imagineering org running on Matrix.
+Every message flows through a Claude agent loop with access to MCP tools
 (Kan.bn, Outline, Radicale, Playwright) plus custom tools. No slash commands — natural
 language only. A separate "matrix chat superbridge" handles relay between Matrix and
 Signal/Discord/Telegram/WhatsApp using puppet accounts — Dreamfinder only connects to
@@ -12,8 +12,7 @@ Matrix.
 
 Adapted from **xdeca-pm-bot** (Telegram).
 
-**Status**: Active sprint — Signal → Matrix migration in progress (branch:
-`feat/discord-migration`). See **Migration Plan** below for phases. 519+ tests.
+**Status**: Active development. 795+ tests.
 Speed is a primary concern. Prefer working code over perfect abstractions. Skip plan
 mode for straightforward tasks, minimize over-engineering, and keep momentum high.
 Still respect correctness and type safety, but bias toward shipping.
@@ -24,7 +23,7 @@ Still respect correctness and type safety, but bias toward shipping.
 | --------------- | -------------------------------------- |
 | Language        | Dart 3.6+                              |
 | Runtime         | Dart VM                                |
-| Messaging       | Matrix (migrating from Signal)         |
+| Messaging       | Matrix                                 |
 | LLM             | Claude Sonnet 4.6 (anthropic_sdk_dart) |
 | MCP             | dart_mcp ^0.4.1                        |
 | Database        | SQLite (via sqlite3 package)            |
@@ -37,8 +36,7 @@ Still respect correctness and type safety, but bias toward shipping.
 ```
 lib/
   src/
-    signal/         # Signal client, message models (being replaced by matrix/)
-    matrix/         # Matrix client, models, auth (Phase 2)
+    matrix/         # Matrix client, models, auth
     agent/          # Agent loop, system prompt, tool registry, conversation history
     mcp/            # MCP subprocess manager
     memory/         # RAG long-term memory (embedding client, pipeline, retriever)
@@ -76,8 +74,6 @@ MATRIX_ACCESS_TOKEN=          # Matrix bot access token (or use username+passwor
 MATRIX_USERNAME=              # Matrix login username (alternative to access token)
 MATRIX_PASSWORD=              # Matrix login password (alternative to access token)
 MATRIX_IGNORE_ROOMS=          # Comma-separated room IDs to ignore (optional)
-SIGNAL_PHONE_NUMBER=          # (deprecated) Bot's registered Signal phone number
-SIGNAL_API_URL=               # (deprecated) signal-cli-rest-api base URL
 KAN_BASE_URL=                 # Kan.bn instance URL
 KAN_API_KEY=                  # Kan.bn API key
 OUTLINE_BASE_URL=             # Outline instance URL
@@ -105,7 +101,7 @@ RATE_LIMIT_GROUP_WINDOW_SECONDS= # Rolling window for group rate limit in second
 - Use **extension types** for domain IDs
   (e.g., `extension type CardId(String value) implements String`).
 - Dart's **sound type system** plus factory constructors with validation for external
-  inputs (Signal messages, API responses, environment variables). Never trust
+  inputs (Matrix events, API responses, environment variables). Never trust
   unvalidated external data.
 - **Doc comments** (`///`) on all public APIs per Effective Dart. Inline comments only
   for non-obvious logic.
@@ -139,8 +135,8 @@ RATE_LIMIT_GROUP_WINDOW_SECONDS= # Rolling window for group rate limit in second
 - SQLite via the `sqlite3` package (synchronous API). No ORM — raw SQL with
   parameterized queries in `Queries` class and `MessageRepository`.
 - Schema defined in `database.dart` with versioned migrations (`_migrateToV1()` through
-  `_migrateToV6()`). Version tracked in `schema_version` table. Current: v6.
-- V6 migration renames Signal-specific tables/columns to platform-agnostic names.
+  `_migrateToV7()`). Version tracked in `schema_version` table. Current: v7.
+- V6 migration renamed Signal-specific tables/columns to platform-agnostic names (historical — must never be removed).
 - Never store secrets or API keys in SQLite.
 
 ## Git & Workflow
@@ -158,11 +154,11 @@ RATE_LIMIT_GROUP_WINDOW_SECONDS= # Rolling window for group rate limit in second
   `git config --unset user.email` when done. Use `$DREAMFINDER_GITHUB_TOKEN` env var
   for authenticated git operations (push, PR creation via `gh`).
 
-## Signal → Matrix Migration Plan
+## Signal → Matrix Migration (complete)
 
-Dreamfinder is moving from Signal to Matrix. A "matrix chat superbridge" relays
-between Matrix and Signal/Discord/Telegram/WhatsApp using puppet accounts, so
-Dreamfinder only needs to connect to Matrix.
+Migration shipped across PRs #47–#48 (2026-03-16) and went live ~2026-03-25. Dreamfinder
+connects only to Matrix; the matrix-chat-superbridge handles relay to Signal, Discord,
+Telegram, and WhatsApp via puppet accounts.
 
 ```
 Signal ──┐
@@ -171,64 +167,10 @@ Telegram ─┤      (puppets)
 WhatsApp ──┘
 ```
 
-**Branch**: `feat/discord-migration`
-**PR strategy**: PR 1 (Phase 1 rename) → PR 2 (Phase 2 Matrix client) → PR 3 (Phases 3–5 switchover)
-
-### Phase 1: Platform-Agnostic Rename (IN PROGRESS)
-
-Pure rename — no behavioral changes. Bot still runs on Signal after this phase.
-
-- **1a. Schema V6 migration** — `ALTER TABLE RENAME TO/COLUMN` for Signal-specific
-  names → generic names (`signal_group_id` → `group_id`, `signal_uuid` → `user_id`,
-  `signal_workspace_links` → `workspace_links`, `signal_user_links` → `user_links`)
-- **1b. Schema record classes** — `SignalWorkspaceLink` → `WorkspaceLink`,
-  `SignalUserLink` → `UserLink`, all `signalGroupId` → `groupId` fields, etc.
-- **1c. Query mixins** — SQL strings, method signatures, param names in all 7 files
-- **1d. Tool parameter names** — `signal_group_id` → `group_id` in tool input schemas
-- **1e. Agent model renames** — `senderUuid` → `senderId`, `adminUuids` → `adminIds`,
-  `ADMIN_UUIDS` → `ADMIN_IDS` (keep fallback)
-- **1f. Kickstart prompt** — replace Signal references in prompt text
-- **1g. System prompt** — `UUID:` → `ID:` label change
-- **1h. Update tests + verify** — all 519+ tests pass, `dart analyze` clean
-
-### Phase 2: Matrix Client Layer
-
-New code, no behavioral changes. Uses `http` package (already a dependency) for direct
-HTTP to the Matrix Client-Server API — same lightweight pattern as `SignalClient`.
-
-- **2a.** No new dependencies needed
-- **2b. Matrix models** — `MatrixEvent`, `MatrixSyncResponse`, `MatrixInvite`
-- **2c. Matrix client** — `whoAmI()`, `sync()`, `sendMessage()`, `sendTypingIndicator()`,
-  `joinRoom()`, `getRoomMembers()`. Sync token persisted in `bot_metadata` table.
-  DM detection via member count. Mention detection via Matrix pills + name regex.
-- **2d. Matrix auth** — `MATRIX_ACCESS_TOKEN` or `MATRIX_USERNAME`+`MATRIX_PASSWORD`
-- **2e. Tests** — mock `http.Client`, cover sync parsing, DM detection, mentions,
-  auto-join, send, token persistence, initial sync skip, login flow
-
-### Phase 3: Main Loop Refactor
-
-Replace Signal polling with Matrix sync loop in `bin/dreamfinder.dart`.
-
-- **3a.** Config changes — remove `signalApiUrl`/`signalPhoneNumber`, add Matrix env vars
-- **3b.** Replace polling loop with `/sync` long-polling loop
-- **3c.** Field mapping: `sourceUuid` → `event.sender`, `chatId` → `event.roomId`
-- **3d.** All `signalClient.sendMessage()` → `matrixClient.sendMessage()` callsites
-- **3e.** DM detection in RateLimiter — `isDm` parameter instead of `chatId.startsWith('+')`
-- **3f.** Remove Signal auto-recovery, add Matrix reconnect with exponential backoff
-- **3g.** Delete `lib/src/signal/` and `test/signal/`
-
-### Phase 4: System Prompt Updates
-
-- "a Signal bot" → "a chat bot"
-- Add Markdown formatting guidance (Matrix supports it)
-- Remove "no message editing" / Signal-specific caveats
-
-### Phase 5: Deployment
-
-- Remove `signal-api` service and `signal_data` volume from Docker Compose
-- Update env vars on VPS
-- V6 migration runs automatically; old Signal chat IDs become orphaned
-- Optional one-time SQL script to remap old Signal chat_ids → Matrix room IDs
+Key milestones: platform-agnostic DB rename (schema v6, PR #47) → Matrix client layer
+(PR #48) → main sync loop switchover (~2026-03-25) → Signal scaffolding removed (PR #90).
+The v6 migration SQL is preserved in `lib/src/db/database.dart` and must never be removed
+(it runs on any pre-v6 database still out there).
 
 ## Other Future Directions
 
