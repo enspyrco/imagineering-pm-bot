@@ -229,9 +229,10 @@ Replace Signal polling with Matrix sync loop in `bin/dreamfinder.dart`.
 
 ## Other Future Directions
 
-### Kickstart guided onboarding (IN PROGRESS)
-5-step guided setup triggered by "kickstart" / "get started" / "let's set up":
-Workspace Setup → Team Roster → Project Seeding → Knowledge Dump → Dream Primer.
+### Kickstart guided onboarding (SHIPPED — in-room, PR #84)
+6-step guided setup triggered by "kickstart" / "get started" / "let's set up" in the
+group room. No DM required — River walks the team through setup in-room.
+Workspace Setup → Team Roster → Project Seeding → Knowledge Dump → Dream Primer → First Nudge.
 State persisted via `bot_metadata` table (no migration needed). System prompt injection
 via `_buildFullSystemPrompt`. Custom tools: `advance_kickstart`, `complete_kickstart`.
 
