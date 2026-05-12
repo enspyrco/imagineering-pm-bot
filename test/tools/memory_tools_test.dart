@@ -533,10 +533,9 @@ void main() {
     test('clamps limit and defaults to 3', () async {
       setUpAllSources();
 
-      final result = await deepRegistry.executeTool('deep_search', {
+      await deepRegistry.executeTool('deep_search', {
         'query': 'test',
       });
-      final data = jsonDecode(result) as Map<String, dynamic>;
 
       // Memory retriever should receive limit of 3.
       expect(retriever.lastTopK, equals(3));

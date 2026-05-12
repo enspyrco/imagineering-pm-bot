@@ -333,20 +333,3 @@ class _TrackingTimer implements Timer {
   @override
   int get tick => 0;
 }
-
-/// A timer that stores its callback for later invocation.
-class _CallbackTimer implements Timer {
-  _CallbackTimer(this.callback);
-
-  final void Function() callback;
-  bool _active = true;
-
-  @override
-  void cancel() => _active = false;
-
-  @override
-  bool get isActive => _active;
-
-  @override
-  int get tick => 0;
-}

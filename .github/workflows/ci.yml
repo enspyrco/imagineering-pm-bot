@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  analyze-and-test:
+    name: Dart analyze & test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          # Pin to the same major.minor as the local dev environment (^3.6.0
+          # constraint satisfied; 3.11.x is the current stable channel).
+          # Bump this when upgrading the SDK constraint in pubspec.yaml.
+          sdk: "3.11"
+
+      - name: Cache pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            .dart_tool
+          key: dart-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+          restore-keys: |
+            dart-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: dart pub get
+
+      - name: Analyze
+        # --fatal-warnings is enabled; --fatal-infos is intentionally omitted
+        # because the codebase has pre-existing info-level style lints in
+        # tool/ and bin/ that are tracked separately (not blocking issues).
+        run: dart analyze --fatal-warnings
+
+      - name: Test
+        run: dart test
