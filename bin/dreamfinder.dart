@@ -299,11 +299,25 @@ Future<void> main() async {
     mcpManager,
   );
 
-  // Set up Anthropic client — OAuth (Claude Max) or API key.
+  // Set up Anthropic client. Auth precedence (most→least robust):
+  //   1. Long-lived Claude Code OAuth token (direct Bearer, no refresh)
+  //   2. Claude Max refresh-token rotation (OAuthTokenManager)
+  //   3. Metered API key
   OAuthTokenManager? oauthManager;
   anthropic.AnthropicClient anthropicClient;
 
-  if (env.useOAuth) {
+  if (env.useDirectBearer) {
+    // A `claude setup-token` credential: used directly as a Bearer header with
+    // no exchange. Static for the token's ~1y lifetime — never needs refresh.
+    anthropicClient = anthropic.AnthropicClient(
+      apiKey: '',
+      headers: {
+        'Authorization': 'Bearer ${env.claudeCodeOAuthToken}',
+        'anthropic-beta': 'oauth-2025-04-20',
+      },
+    );
+    log.info('Auth mode: OAuth (Claude Code long-lived token)');
+  } else if (env.useOAuth) {
     oauthManager = OAuthTokenManager(
       queries: queries,
       log: BotLogger(name: 'OAuth', level: LogLevel.fromString(env.logLevel)),
@@ -327,6 +341,7 @@ Future<void> main() async {
   /// Human-readable auth mode for alerts/logs.
   String authModeLabel() {
     if (usingApiKeyFallback) return 'API key (OAuth fallback)';
+    if (env.useDirectBearer) return 'OAuth (Claude Code token)';
     return env.useOAuth ? 'OAuth (Claude Max)' : 'API key';
   }
 
@@ -403,7 +418,7 @@ Future<void> main() async {
         // immediately on the new client.
         if (shouldFallBackToApiKey(
           kind: kind,
-          oauthActive: oauthManager != null,
+          oauthActive: oauthManager != null || env.useDirectBearer,
           alreadyFellBack: usingApiKeyFallback,
           hasApiKey:
               env.anthropicApiKey != null && env.anthropicApiKey!.isNotEmpty,

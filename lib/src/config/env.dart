@@ -16,6 +16,7 @@ class Env {
   Env._({
     this.anthropicApiKey,
     this.claudeRefreshToken,
+    this.claudeCodeOAuthToken,
     required this.matrixHomeserver,
     this.matrixAccessToken,
     this.matrixUsername,
@@ -55,10 +56,13 @@ class Env {
     final dotEnv = DotEnv(includePlatformEnvironment: true)..load();
     final anthropicApiKey = dotEnv['ANTHROPIC_API_KEY'];
     final claudeRefreshToken = dotEnv['CLAUDE_REFRESH_TOKEN'];
+    final claudeCodeOAuthToken = dotEnv['CLAUDE_CODE_OAUTH_TOKEN'];
     if ((anthropicApiKey == null || anthropicApiKey.isEmpty) &&
-        (claudeRefreshToken == null || claudeRefreshToken.isEmpty)) {
+        (claudeRefreshToken == null || claudeRefreshToken.isEmpty) &&
+        (claudeCodeOAuthToken == null || claudeCodeOAuthToken.isEmpty)) {
       throw StateError(
-        'Either ANTHROPIC_API_KEY or CLAUDE_REFRESH_TOKEN is required',
+        'One of ANTHROPIC_API_KEY, CLAUDE_CODE_OAUTH_TOKEN, or '
+        'CLAUDE_REFRESH_TOKEN is required',
       );
     }
     final matrixHomeserver = dotEnv['MATRIX_HOMESERVER'];
@@ -78,6 +82,7 @@ class Env {
     return Env._(
       anthropicApiKey: anthropicApiKey,
       claudeRefreshToken: claudeRefreshToken,
+      claudeCodeOAuthToken: claudeCodeOAuthToken,
       matrixHomeserver: matrixHomeserver,
       matrixAccessToken: matrixAccessToken,
       matrixUsername: matrixUsername,
@@ -130,6 +135,7 @@ class Env {
   factory Env.forTesting({
     String? anthropicApiKey = 'test-key',
     String? claudeRefreshToken,
+    String? claudeCodeOAuthToken,
     String matrixHomeserver = 'https://matrix.test',
     String? matrixAccessToken = 'test-token',
     String? matrixUsername,
@@ -167,6 +173,7 @@ class Env {
       Env._(
         anthropicApiKey: anthropicApiKey,
         claudeRefreshToken: claudeRefreshToken,
+        claudeCodeOAuthToken: claudeCodeOAuthToken,
         matrixHomeserver: matrixHomeserver,
         matrixAccessToken: matrixAccessToken,
         matrixUsername: matrixUsername,
@@ -208,7 +215,21 @@ class Env {
   /// Claude Max OAuth refresh token. If set, used instead of [anthropicApiKey].
   final String? claudeRefreshToken;
 
-  /// Whether OAuth auth is configured (vs API key auth).
+  /// Long-lived Claude Code OAuth token (from `claude setup-token`), used
+  /// directly as a `Authorization: Bearer` header — no refresh exchange.
+  ///
+  /// This is the most robust Claude Max credential: it's valid ~1 year, isn't
+  /// single-use, and isn't tied to a rotating interactive-session keychain
+  /// lineage, so it sidesteps the refresh-token reuse/poisoning races that
+  /// [claudeRefreshToken] is subject to. Takes precedence over both other
+  /// modes when set.
+  final String? claudeCodeOAuthToken;
+
+  /// Whether the long-lived direct-Bearer OAuth token is configured.
+  bool get useDirectBearer =>
+      claudeCodeOAuthToken != null && claudeCodeOAuthToken!.isNotEmpty;
+
+  /// Whether refresh-token OAuth auth is configured (vs API key auth).
   bool get useOAuth =>
       claudeRefreshToken != null && claudeRefreshToken!.isNotEmpty;
 
